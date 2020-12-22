@@ -1,5 +1,5 @@
 # Retrotrivia 
-![Retrotrivia](https://raw.githubusercontent.com/lbrpdx/retrotrivia/assets/logo.png)
+![Retrotrivia](https://raw.githubusercontent.com/lbrpdx/retrotrivia/master/assets/logo.png)
 
 A trivia game for Retrogaming lovers.
 
