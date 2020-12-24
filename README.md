@@ -30,7 +30,7 @@ On Batocera, get the files fromn this GitHub repository, and put them into `/use
 
 Retrotrivia is [free and opensource software](https://en.wikipedia.org/wiki/Free_and_open-source_software) and can't be sold unless explicitely permitted by its main author and maintener (@lbrpdx). As of today, nobody has gotten permission to sell it, so if you paid for it, someone abused you.
 
-All the code is given under the [LGPL v3](https://www.gnu.org/licenses/lgpl-3.0.html) liccense. All the code and video game assets can be freely modified and redistributed as long as this README.md file is distributed with it, in its original form.
+All the code is given under the [LGPL v3](https://www.gnu.org/licenses/lgpl-3.0.html) license. All the code and video game assets can be freely modified and redistributed as long as this README.md file is distributed with it, in its original form.
 
 ## How can you contribute?
 

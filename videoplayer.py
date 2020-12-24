@@ -7,6 +7,7 @@ import pygame
 import subprocess
 
 FFMPEG_BIN       = "/usr/bin/ffmpeg"   # Full path to ffmpeg executable
+SOUND_VOL        = 0.7   # FIXME: to sync up with GameState object
 
 #######################################
 ### Video to PyGame converter
@@ -24,11 +25,10 @@ class VideoSprite(pygame.sprite.Sprite):
                 '-' ]
         commandaudio = [ FFMPEG_BIN,
                 '-loglevel', 'quiet', '-y',
-                '-i', filename,
-                '-vn', '-acodec', 'mp3',
-                '-ar', '44100', '-ac', '2',
+                '-i', filename, '-vn',
+                '-c:a', 'pcm_s16le',
                 '-b:a', '128k',
-                '/tmp/retrotrivia_audio.mp3' ]
+                '/tmp/retrotrivia_audio.wav' ]
         self.bytes_per_frame = rect.width * rect.height * 3
         self.procvideo   = subprocess.Popen(commandvideo, stdout=subprocess.PIPE, bufsize=self.bytes_per_frame*3)
         self.procaudio   = subprocess.call(commandaudio, stdout=subprocess.PIPE, bufsize=1024*1024)
@@ -40,9 +40,10 @@ class VideoSprite(pygame.sprite.Sprite):
         self.last_at     = 0           # time frame starts to show
         self.frame_delay = 1000 / FPS  # milliseconds duration to show frame
         # audio
-        self.audiotrack=pygame.mixer.Sound('/tmp/retrotrivia_audio.mp3')
+        self.audiotrack=pygame.mixer.Sound('/tmp/retrotrivia_audio.wav')
+        self.audiotrack.set_volume(SOUND_VOL)
         self.audiotrack.play()
-        # stop it
+        # and tell when to stop it
         self.video_stop  = False
 
     def stop(self):

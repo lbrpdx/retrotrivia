@@ -11,6 +11,7 @@ import questions
 import gamelists
 import videoplayer
 import itertools
+import os
 
 #######################################
 ### Global parameters
@@ -27,6 +28,7 @@ NUMBER_Q         = 10  # number of questions to ask
 TIMER_COLOR      = 'green'
 TIMER_COLOR_END  = 'red'
 GAMEMODES        = [ 'A', 'V', 'T' ] # [V]ideos, [T]rivia, [A]ll
+SOUND_VOL        = 0.7
 
 #######################################
 ### List and types of questions
@@ -65,6 +67,8 @@ class GameState:
         self.numqansw    = 0     # what question have we answered?
         self.sound_right = pygame.mixer.Sound('assets/playerright.wav')
         self.sound_wrong = pygame.mixer.Sound('assets/playeranswered.wav')
+        self.sound_right.set_volume(SOUND_VOL)
+        self.sound_wrong.set_volume(SOUND_VOL)
 
     def pop_question(self):
         if self.QB.gamemode == 'V' or self.QB.gamemode == 'A':
@@ -336,6 +340,7 @@ class QuizScreen:
         self.back_img = pygame.image.load('assets/back_q.jpg')
         self.back_img = pygame.transform.scale(self.back_img, (self.screen.get_width(), self.screen.get_height()))
         self.background.blit(self.back_img, (0, 0))
+        self.vidsurface = None
         self.vsprite = None
         self.vsprite_group = None
         self.rects = []
@@ -364,10 +369,14 @@ class QuizScreen:
         for n in range(5):
             self.r.append('')
         self.question, self.answer, self.r[1], self.r[2], self.r[3], self.r[4] = gamestate.pop_question()
-        # Draw question
+        # Clean and draw question
         if self.vsprite_group is not None:
-            self.vsprite_group.remove(self.vsprite)
+            if self.vsprite is not None:
+                self.vsprite_group.remove(self.vsprite)
+                self.vsprite = None
+            self.vsprite_goup = None
         if (self.question[-4:].rstrip()) == '.mp4':
+            # Surface video player
             self.vidsurface = pygame.Rect(int(self.square*2.2), int(self.square/5),\
                 int((self.screen.get_height()/2.1)*(4/3)), int(self.screen.get_height()/2.1))
             self.vsprite = videoplayer.VideoSprite(self.vidsurface, self.question)
@@ -375,6 +384,8 @@ class QuizScreen:
             self.vsprite_group.add(self.vsprite)
         else:
             self.printline('\n'+self.question, 2*self.square, 0)
+            self.vsprite = None
+            self.vsprite_goup = None
         self.timer_started = True
         self.start_time = pygame.time.get_ticks() + gamestate.QB.timer * 1000 + 900 # margin to draw screen
         self.passed_time = self.start_time
@@ -396,7 +407,6 @@ class QuizScreen:
                     col = BOX_COLOR_ANSWER
                     wid *= 1.2
             pygame.draw.rect(screen, pygame.Color(col), rect, int(wid*self.screen.get_height() / 1080))
-            #self.printline(ft[n], rect.x+self.square/3, rect.y)
             self.background.blit(self.arrows[n-1], (rect.x, rect.y))
             self.printline(self.r[n], self.resps[n-1].x+self.square/3, self.resps[n-1].y)
             n += 1
@@ -441,9 +451,10 @@ class QuizScreen:
             return (self.reveal_res(events, dt))
 
     def reveal_res(self, events, dt):
-        #self.screen.blit(self.background, (0, 0))
         if self.vsprite_group is not None:
-            self.vsprite.stop()
+            if self.vsprite is not None:
+                if self.vsprite.video_stop is False:
+                    self.vsprite.stop()
         self.printline('PRESS [A]\nTO CONTINUE', int(self.screen.get_width()* 0.8), int(self.screen.get_height()*7/10))
         for event in events:
             if event.type == pygame.KEYDOWN:
@@ -458,7 +469,10 @@ class QuizScreen:
 #######################################
 ### Main Loop
 def main():
+    os.environ['SDL_AUDIODRIVER'] = 'alsa'
+    pygame.mixer.pre_init(frequency=44100)
     pygame.init()
+    pygame.mixer.init(frequency=44100)
     pygame.mouse.set_visible(0)
     infoObject = pygame.display.Info()
     screen = pygame.display.set_mode((infoObject.current_w, infoObject.current_h), WINDOW_SURFACE)
