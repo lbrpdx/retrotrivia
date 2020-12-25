@@ -134,6 +134,7 @@ class GameState:
         return 'FINAL SCORE: {}\n'.format(self.score[1])+tagline+right+wrong
 
 
+
 #######################################
 ### Simple static Screen
 class StaticScreen:
@@ -347,7 +348,7 @@ class QuizScreen:
         self.resps = []
         self.square = int(self.screen.get_height()/10)
         x = int(10 + self.screen.get_width()/20)
-        y = int(self.screen.get_height()/2 + self.square/2)
+        y = int(self.screen.get_height()/2 + self.square)
         self.arrows = [ ]
         self.arrow_img = pygame.image.load('assets/arrow.png')
         self.arrow_img = pygame.transform.scale(self.arrow_img, (self.square, self.square))
@@ -355,12 +356,19 @@ class QuizScreen:
         for i in range (3):
             self.arrow_img = pygame.transform.rotate(self.arrow_img,90)
             self.arrows.append(self.arrow_img)
+        ricox = [ int(x + self.screen.get_width()*0.8 /2 /2),
+                      int(x),
+                      int(x + self.screen.get_width()*0.8 /2 /2),
+                      int(x + self.screen.get_width()*0.8 /2) ]
+        ricoy = [ int(y),
+                      int(y + int(self.square*1.1)),
+                      int(y + 2*int(self.square*1.1)),
+                      int(y + int(self.square*1.1)) ]
         for n in range(4):
-            rect = pygame.Rect(x, y, self.square, self.square)
-            resp = pygame.Rect(int(x+self.square*1.1), y, self.screen.get_width()-2*self.square, self.square)
+            rect = pygame.Rect(ricox[n], ricoy[n], self.square, self.square)
+            resp = pygame.Rect(int(ricox[n]+self.square*1.1), ricoy[n], int(self.screen.get_width()*0.8/2-self.square*1.1), self.square)
             self.rects.append(rect)
             self.resps.append(resp)
-            y += int(self.square*1.1)
 
     def start(self, gamestate):
         self.background.blit(self.back_img, (0, 0))
@@ -378,7 +386,7 @@ class QuizScreen:
         if (self.question[-4:].rstrip()) == '.mp4':
             # Surface video player
             self.vidsurface = pygame.Rect(int(self.square*2.2), int(self.square/5),\
-                int((self.screen.get_height()/2.1)*(4/3)), int(self.screen.get_height()/2.1))
+                int((self.screen.get_height()/2.1)*(4/3)), int(self.screen.get_height()/2+self.square*3/5))
             self.vsprite = videoplayer.VideoSprite(self.vidsurface, self.question)
             self.vsprite_group = pygame.sprite.Group()
             self.vsprite_group.add(self.vsprite)
@@ -397,8 +405,8 @@ class QuizScreen:
         n = 1
         for rect in self.rects:
             # Color boxes
-            col = BOX_COLOR
-            wid = BOX_WIDTH
+            col      = BOX_COLOR
+            wid      = BOX_WIDTH
             if self.reveal:
                 if n == self.vinput:
                     col = BOX_COLOR_WRONG
@@ -413,7 +421,9 @@ class QuizScreen:
 
         scorefont = pygame.font.Font(SYS_FONT, int(FONT_SIZE*self.screen.get_height() / 1080))
         scoretext = scorefont.render(' SCORE: {}'.format(self.gamestate.score[1]), True, TEXT_COLOR)
-        self.screen.blit(scoretext, (int(self.screen.get_width()* 0.8), int(self.screen.get_height()* 0.5)))
+        self.screen.blit(scoretext, (int(self.screen.get_width()* 0.8), int(self.screen.get_height()* 0.4)))
+        turntext = scorefont.render(' QUESTION: {}/{}'.format(self.gamestate.numq,self.gamestate.QB.number_q), True, TEXT_COLOR)
+        self.screen.blit(turntext, (int(self.screen.get_width()* 0.8), int(self.screen.get_height()* 0.05)))
         if self.timer_started:
             # Larger font for the timer
             font = pygame.font.Font(SYS_FONT, 5 * int(FONT_SIZE*self.screen.get_height() / 1080))
@@ -455,7 +465,7 @@ class QuizScreen:
             if self.vsprite is not None:
                 if self.vsprite.video_stop is False:
                     self.vsprite.stop()
-        self.printline('PRESS [A]\nTO CONTINUE', int(self.screen.get_width()* 0.8), int(self.screen.get_height()*7/10))
+        self.printline('PRESS [A]\nTO CONTINUE', int(self.screen.get_width()* 0.8), int(self.screen.get_height()*0.5))
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key in (97, 98):  # Buttons A and B on joypad
