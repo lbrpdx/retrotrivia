@@ -13,7 +13,7 @@ SOUND_VOL        = 0.7   # FIXME: to sync up with GameState object
 ### Video to PyGame converter
 class VideoSprite(pygame.sprite.Sprite):
 
-    def __init__(self, rect, filename, FPS=30):
+    def __init__(self, rect, filename, pixelated, FPS=30):
         pygame.sprite.Sprite.__init__(self)
         commandvideo = [ FFMPEG_BIN,
                 '-loglevel', 'quiet',
@@ -45,19 +45,33 @@ class VideoSprite(pygame.sprite.Sprite):
         self.audiotrack.play()
         # and tell when to stop it
         self.video_stop  = False
+        # optional pixelate effect
+        self.pixelated   = pixelated
+        self.coeff       = 2 # how slow you want to un-pixelate
 
     def stop(self):
         self.video_stop  = True
         self.audiotrack.stop()
 
-    def update(self):
+    def update(self, timer, tmax):
         if (not self.video_stop):
             time_now = pygame.time.get_ticks()
             if (time_now > self.last_at + self.frame_delay):   # has the frame shown for long enough
                 self.last_at = time_now
                 try:
                     raw_image = self.procvideo.stdout.read(self.bytes_per_frame)
-                    self.image = pygame.image.frombuffer(raw_image, (self.rect.width, self.rect.height), 'RGB')
+                    img_temp = pygame.image.frombuffer(raw_image, (self.rect.width, self.rect.height), 'RGB')
+                    if self.pixelated:
+                        # timer in second: don't pixellate if < 3 sec left
+                        if timer > 3:
+                            mmax = max (timer, tmax)
+                            (px, py) = (pow(2,int((mmax - timer +1)/self.coeff)), pow(2,int((mmax - timer +1)/self.coeff)))
+                            # print ((px,py))
+                            if (px, py) < (self.rect.width, self.rect.height):
+                                img_temp = pygame.transform.scale(img_temp, (px,py))
+                        self.image = pygame.transform.scale(img_temp, (self.rect.width, self.rect.height))
+                    else:
+                        self.image = img_temp
                     #self.proc.stdout.flush()  - doesn't seem to be necessary
                 except:
                     # error getting data, end of file?  Black Screen it

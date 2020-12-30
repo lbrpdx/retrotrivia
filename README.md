@@ -1,28 +1,28 @@
 # Retrotrivia 
 ![Retrotrivia](https://raw.githubusercontent.com/lbrpdx/retrotrivia/master/assets/logo.png)
 
-A trivia game for Retrogaming lovers.
+A trivia game for retrogaming lovers.
 
 ## What's the game?
 
 You will be asked questions about your retro video games, and some general retro-gaming trivia. 
 Several gaming modes ara available:
  - 100+ handcrafted trivia questions
- - video thumnails: guess what game is it? 
+ - video thumbnails: guess what game is shown
 
-Rules: you have a countdown timer for each question. You need to answer before the countdown times out. Let's say you give your answer with 5 seconds left on the timer: if your answer is correct, you score 5 points, if not, you lose 5 points. Be fast, be bold: you won't go below 0 for your score.
+Rules: you have a countdown timer for each question. You need to answer before the countdown times out. Let's say you give your answer with 5 seconds left on the timer: if your answer is correct, you score 5 points, if not, you lose 5 points. Be fast, be bold: you won't go below 0 on your score.
 
 In future releases:
  - multi-player
- - "blind" mode
  - other game modes...
 
 ## Installation
 
 This game is primarily meant to be used with [Batocera](https://batocera.org/). It's been developed and tested with Batocera 29 and its [PyGame](https://www.pygame.org) installation. You can most probably adapt it to other retrogaming distribiutions using EmulationStation `gamelist.xml` classic format.
 
-On Batocera, get the files fromn this GitHub repository, and put them into `/userdata/roms/pygame/retrotrivia`.
+On Batocera, get the files from this GitHub repository, and put them into `/userdata/roms/pygame/retrotrivia`.
 
+Controls:
  - D-Pad to select the answer.
  - A (or B) button to select/move to the next question.
 
