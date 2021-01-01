@@ -13,7 +13,7 @@ SOUND_VOL        = 0.7   # FIXME: to sync up with GameState object
 ### Video to PyGame converter
 class VideoSprite(pygame.sprite.Sprite):
 
-    def __init__(self, rect, filename, pixelated, FPS=30):
+    def __init__(self, rect, filename, sound_volume, pixelated, FPS=30):
         pygame.sprite.Sprite.__init__(self)
         commandvideo = [ FFMPEG_BIN,
                 '-loglevel', 'quiet',
@@ -40,9 +40,11 @@ class VideoSprite(pygame.sprite.Sprite):
         self.last_at     = 0           # time frame starts to show
         self.frame_delay = 1000 / FPS  # milliseconds duration to show frame
         # audio
-        self.audiotrack=pygame.mixer.Sound('/tmp/retrotrivia_audio.wav')
-        self.audiotrack.set_volume(SOUND_VOL)
-        self.audiotrack.play()
+        self.audiotrack  = None
+        if sound_volume > 0:
+            self.audiotrack=pygame.mixer.Sound('/tmp/retrotrivia_audio.wav')
+            self.audiotrack.set_volume(0.2*sound_volume)
+            self.audiotrack.play()
         # and tell when to stop it
         self.video_stop  = False
         # optional pixelate effect
@@ -51,7 +53,8 @@ class VideoSprite(pygame.sprite.Sprite):
 
     def stop(self):
         self.video_stop  = True
-        self.audiotrack.stop()
+        if self.audiotrack:
+            self.audiotrack.stop()
 
     def update(self, timer, tmax):
         if (not self.video_stop):

@@ -7,7 +7,7 @@ A trivia game for retrogaming lovers.
 
 You will be asked questions about your retro video games, and some general retro-gaming trivia. 
 Several gaming modes ara available:
- - 100+ handcrafted trivia questions
+ - 120+ handcrafted trivia questions
  - video thumbnails: guess what game is shown
 
 Rules: you have a countdown timer for each question. You need to answer before the countdown times out. Let's say you give your answer with 5 seconds left on the timer: if your answer is correct, you score 5 points, if not, you lose 5 points. Be fast, be bold: you won't go below 0 on your score.

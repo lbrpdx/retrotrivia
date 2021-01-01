@@ -10,12 +10,13 @@ import os
 BASEPATH  = '/userdata/roms/'
 XML       = '/gamelist.xml'
 MIN_GAMES = 10   # Don't index if fewer than this
-MAX_GAMES = 3000 # Don't index full sets
+MAX_GAMES = 5000 # Don't index full sets
 SYSTEMS   = [  '3do', '3ds', 'amiga1200', 'amiga500', 'amigacd32', 'amigacdtv', 'amstradcpc', 'apple2', 'atari2600', 'atari5200', 'atari7800', 'atari800', 'atarist', 'atomiswave', 'c128', 'c20', 'c64', 'colecovision', 'daphne', 'dos', 'dreamcast', 'fbneo', 'fds', 'gameandwatch', 'gamecube', 'gamegear', 'gb', 'gba', 'gbc', 'gx4000', 'intellivision', 'jaguar', 'lynx', 'mame', 'mastersystem', 'megadrive', 'msx', 'msx1', 'msx2', 'msx2+', 'n64', 'naomi', 'nds', 'neogeo', 'neogeocd', 'nes', 'ngp', 'ngpc', 'o2em', 'openbor', 'pc88', 'pc98', 'pcengine', 'pcenginecd', 'pcfx', 'pico8', 'pokemini', 'ports', 'prboom', 'ps2', 'ps3', 'psp', 'psx', 'satellaview', 'saturn', 'scummvm', 'sega32x', 'segacd', 'sg1000', 'snes', 'sufami', 'supergrafx', 'thomson', 'tic80', 'vectrex', 'virtualboy', 'wii', 'wiiu', 'windows', 'wswan', 'wswanc', 'x68000', 'zx81', 'zxspectrum' ]
 
 class gamelist:
     def __init__(self):
         self.Q =[]
+        self.loaded_systems = []
 
     def load(self, system):
         self.tree = ET.parse(BASEPATH+system+XML)
@@ -25,7 +26,7 @@ class gamelist:
             short=item.text.split('(')[0] # Remove (USA, Europe...)
             setgames.add(short.rstrip(' '))
         allgames = [n for n in setgames]
-        print ("Loading "+system+" games : "+str(len(allgames)))
+        self.loaded_systems.append(" - {} with {} games".format(system, str(len(allgames))))
         if len(allgames) < MIN_GAMES:
             return
 
@@ -59,7 +60,7 @@ class gamelist:
                     self.Q.append(out)
                     indexed_games += 1
                     if indexed_games >= MAX_GAMES:
-                        print ("Warning: "+system+" hits the max games number.")
+                        self.loaded_systems.append("   {} hits the max games number ({})".format(system, str(MAX_GAMES)))
                         return
 
     def load_all(self):
