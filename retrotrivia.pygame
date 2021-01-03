@@ -17,12 +17,13 @@ import logging
 
 #######################################
 ### Global parameters
-DEBUG            = 0
+DEBUG            = 1
 WINDOW_SURFACE   = pygame.HWSURFACE|pygame.DOUBLEBUF
 SYS_FONT         = './assets/Bison.ttf' 
 FONT             = None
 FONT_SIZE        = 50
 TEXT_COLOR       = 'black'
+TEXT_HALO        = 'white'
 BOX_COLOR        = 'blue'
 BOX_COLOR_ANSWER = 'green'
 BOX_COLOR_WRONG  = 'red'
@@ -37,36 +38,58 @@ SOUND_VOL        = 5
 SCREEN           = None
 JOYSTICKS        = [ None, None, None, None ]
 LOGGER           = None
+AUDIO_FREQ       = 44100
+AUDIO_BUFFER     = 4096
 
 #######################################
 ###  wrap/render text on a surface
-def draw_text(surface, text, color, rect, yoffset=0, lineSpacing=1):
-    text = text.upper().split('\n')
-    rendtext = FONT.render("TgM") # Sample text to render
-    fontHeight = int(rendtext[1][3])
-    y = rect.top + fontHeight * yoffset
-    for line in text:
-        while line:
-            i = 1
-            # determine if the row of text will be outside our Rect area
-            if y + fontHeight > rect.bottom:
-                break
-            # determine maximum width of line
-            while (FONT.render(line[:i])[1][2] < rect.width) and (i < len(line)):
-                i += 1
-            # if we wrap the line, then adjust to the last word
-            if i < len(line):
-                i = line.rfind(" ", 0, i) + 1
-            # render the line and blit it to the surface
-            image = FONT.render(line[:i], color)
-            FONT.render_to(surface, (rect.left, y, rect.width, rect.height),\
-                    line[:i], color)
-            surface.blit(image[0], (rect.left, y))
-            y += int(fontHeight *(1 + 0.2* lineSpacing))
-            # remove the text we just blitted
-            line = line[i:]
-    return line # remaining text
+class DrawText:
+    def __init__(self, surface, text, color, rect, yoffset=0, lineSpacing=1):
+        opx = 3
+        text = text.upper().split('\n')
+        rendtext = FONT.render("TgM") # Sample text to render
+        fontHeight = int(rendtext[1][3])
+        y = rect.top + fontHeight * yoffset
+        for line in text:
+            while line:
+                i = 1
+                # determine if the row of text will be outside our Rect area
+                if y + fontHeight > rect.bottom:
+                    break
+                # determine maximum width of line
+                while (FONT.render(line[:i])[1][2] < rect.width) and (i < len(line)):
+                    i += 1
+                # if we wrap the line, then adjust to the last word
+                if i < len(line):
+                    i = line.rfind(" ", 0, i) + 1
+                # render the line and blit it to the surface
+                image = FONT.render(line[:i], color)
+                surface.blit(image[0], (rect.left, y))
+                y += int(fontHeight *(1 + 0.2* lineSpacing))
+                # remove the text we just blitted
+                line = line[i:]
+        return # line contains remaining text
 
+#########################################
+## Manage sound from multiple objects (otherwise : crash)
+class SoundManager:
+    def __init__(self):
+        self.sound = None
+        self.vol = 0
+        pygame.mixer.init(frequency=AUDIO_FREQ, buffer=AUDIO_BUFFER)
+
+    def volume(self, new_vol):
+        self.vol = new_vol
+
+    def play(self, sound_file):
+        if pygame.mixer.get_busy():
+            pygame.mixer.stop()
+        if not os.path.isfile(sound_file):
+            return
+        self.sound = pygame.mixer.Sound(sound_file)
+        if self.vol > 0:
+            self.sound.set_volume(0.2*self.vol)
+            self.sound.play()
 
 #########################################
 ## Check if a process is running (pad2key conflicts with joypad)
@@ -112,7 +135,7 @@ def key_pressed (event, joypad):
             return 'down'
     elif joypad != None and event.type == pygame.JOYBUTTONDOWN:
         if (DEBUG):
-            for k in range (18):
+            for k in range (joypad.get_numbuttons()):
                 if joypad.get_button(k):
                     log ("Joypad event: {}".format(k))
         if joypad.get_button(8):
@@ -139,9 +162,7 @@ class QuestionBank:
     sound_vol      = SOUND_VOL
 
     def __init__(self):
-        pygame.mixer.init(frequency=44100)
-        self.sound_right = pygame.mixer.Sound('assets/playerright.wav')
-        self.sound_wrong = pygame.mixer.Sound('assets/playeranswered.wav')
+        pass
 
     def load_all(self):
         self.triviabank = questions.Q[:]
@@ -170,6 +191,7 @@ class GameState:
         self.numqansw         = 0     # what question have we answered?
 
     def pop_question(self):
+        log ("GameState pop question")
         if len (self.questionst) < (self.QB.number_q - self.numqansw):
             self.questionst = self.QB.triviabank[:]
         # Remind: GAMEMODES_NAMES  = [ 'Video', 'Trivia', 'Pixelate' ]
@@ -207,18 +229,16 @@ class GameState:
                 self.right += 1
                 # FIXME: Only 1 player hardcoded
                 self.score[1] += timer
-                if self.QB.sound_vol > 0:
-                    self.QB.sound_right.play()
                 log ("Question {} was right at {} sec".format(self.numqansw, timer))
+                return True
             else:
                 self.wrong += 1
                 # FIXME: Only 1 player hardcoded
                 self.score[1] -= timer
-                if self.QB.sound_vol > 0:
-                    self.QB.sound_wrong.play()
-                log ("Question {} was wrong at {} sec".format(self.numqansw, timer))
                 if self.score[1] < 0:
                     self.score[1] = 0 # No negative score, too depressing
+                log ("Question {} was wrong at {} sec".format(self.numqansw, timer))
+                return False
 
     def get_result(self):
         log ("Game Over")
@@ -230,11 +250,11 @@ class GameState:
             tagline="YOU CAN DO BETTER NEXT TIME.\n"
         else:
             tagline="OK, WE WON'T JUDGE YOU...\n"
-        right = '\n{} answers were correct\n'.format(self.right) if self.right>1 \
+        tright = '\n{} answers were correct\n'.format(self.right) if self.right>1 \
             else '\nhuh, {} answer was correct\n'.format(self.right)
-        wrong = '{} answers were wrong'.format(self.wrong) if self.wrong>1 \
-            else'and, wow, {} answer was wrong'.format(self.wrong)
-        return 'FINAL SCORE: {}\n'.format(self.score[1])+tagline+right+wrong
+        twrong = '{} answers were wrong'.format(self.wrong) if self.wrong>1 \
+            else 'and, wow, {} answer was wrong'.format(self.wrong)
+        return 'FINAL SCORE: {}\n'.format(self.score[1])+tagline+tright+twrong
 
 
 #######################################
@@ -270,7 +290,7 @@ class StaticScreen:
         if self.additional_text:
             p_surface=pygame.Rect(SCREEN.get_width()*0.375, SCREEN.get_height()*0.375,\
                       SCREEN.get_width()/3, SCREEN.get_height()/2)
-            draw_text(self.background, self.additional_text, TEXT_COLOR, p_surface, 3, 2)
+            DrawText(self.background, self.additional_text, TEXT_COLOR, p_surface, 3, 2)
             self.additional_text = None
 
     def update(self, events, dt):
@@ -344,17 +364,17 @@ class SettingsScreen:
         self.background.blit(self.back_img, (0, 0))
         p_surface=pygame.Rect(SCREEN.get_width()*3/8, SCREEN.get_height()/12,\
                   SCREEN.get_width()/3, SCREEN.get_height()/10)
-        draw_text(self.background, 'Settings', TEXT_COLOR, p_surface, 1, 1)
+        DrawText(self.background, 'Settings', TEXT_COLOR, p_surface, 1, 1)
         p_surface2=pygame.Rect(SCREEN.get_width()*3/8, SCREEN.get_height()*8/10,\
                   SCREEN.get_width()/3, SCREEN.get_height()/10)
-        draw_text(self.background, '[Hotkey]+[Start] to quit', TEXT_COLOR, p_surface2, 1, 1)
+        DrawText(self.background, '[Hotkey]+[Start] to quit', TEXT_COLOR, p_surface2, 1, 1)
         n = 0
         for rect in self.rects_val:
-            draw_text(self.background, self.settings[n], TEXT_COLOR, self.rects_set[n], 1, 1)
+            DrawText(self.background, self.settings[n], TEXT_COLOR, self.rects_set[n], 1, 1)
             n += 1
-        draw_text(self.background, "Game modes:", TEXT_COLOR, self.rects_gmodes, 1, 1)
+        DrawText(self.background, "Game modes:", TEXT_COLOR, self.rects_gmodes, 1, 1)
         for i in range(len(self.rects_gmode)):
-            draw_text(self.background, GAMEMODES_NAMES[i], TEXT_COLOR, self.rects_gmode[i], 1, 1)
+            DrawText(self.background, GAMEMODES_NAMES[i], TEXT_COLOR, self.rects_gmode[i], 1, 1)
         pygame.display.flip()
 
     def draw(self):
@@ -438,11 +458,8 @@ class SettingsScreen:
                 self.QB.gamemode  = self.settings_val[3]
                 log("Number of questions: {}, timer: {}, sound vol: {}".format(self.QB.number_q, self.QB.timer, self.QB.sound_vol))
                 log("Selected gamemodes: {}".format(self.QB.gamemode))
-                self.QB.sound_wrong.set_volume(0.2*self.QB.sound_vol)
-                self.QB.sound_right.set_volume(0.2*self.QB.sound_vol)
                 return ('QUIZ', GameState(1, self.QB))
                 #FIXME only 1 player hardcoded at the moment
-
 
     def update(self, events, dt):
         for event in events:
@@ -469,16 +486,52 @@ class SettingsScreen:
 
 ######################################
 ### Larger countdown
+def circlepoints(r, ccache):
+    r = int(round(r))
+    if r in ccache:
+        return ccache[r]
+    x, y, e = r, 0, 1 - r
+    ccache[r] = points = []
+    while x >= y:
+        points.append((x, y))
+        y += 1
+        if e < 0:
+            e += 2 * y - 1
+        else:
+            x -= 1
+            e += 2 * (y - x) - 1
+    points += [(y, x) for x, y in points if x > y]
+    points += [(-x, y) for x, y in points if x]
+    points += [(x, -y) for x, y in points if y]
+    points.sort()
+    return points
+
 class Timer(pygame.sprite.Sprite):
+    circle_cache = {}
+
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
         self.image = None
         self.font = pygame.font.Font(SYS_FONT, 5 * int(FONT_SIZE*SCREEN.get_height() / 1080))
 
-    def update (self, passed_time, max_timer):
+    def update (self, passed_time, max_timer, opx=5):
         # Larger font for the timer
+        opx=opx*SCREEN.get_height()//1080
         font_color = pygame.Color(TIMER_COLOR_END) if passed_time <= 5 else pygame.Color(TIMER_COLOR)
-        self.image = self.font.render(str(passed_time if passed_time < max_timer else max_timer), True, font_color)
+        text = str(passed_time if passed_time < max_timer else max_timer)
+        textsurface = self.font.render(text, True, font_color).convert_alpha()
+        w = textsurface.get_width() + 2 * opx
+        h = self.font.get_height()
+        osurf = pygame.Surface((w, h + 2 * opx)).convert_alpha()
+        osurf.fill((0, 0, 0, 0))
+        surf = osurf.copy()
+        osurf.blit(self.font.render(text, True, TEXT_HALO).convert_alpha(), (0, 0))
+        for dx, dy in circlepoints(opx, self.circle_cache):
+            surf.blit(osurf, (dx + opx, dy + opx))
+        surf.blit(textsurface, (opx, opx))
+
+        #self.image = self.font.render(str(passed_time if passed_time < max_timer else max_timer), True, font_color)
+        self.image = surf
         self.rect = (int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.1))
 
 ######################################
@@ -525,9 +578,11 @@ class QuizScreen:
             self.rects.append(rect)
             self.resps.append(resp)
         self.countdown = Timer()
+        self.sound_manager = SoundManager()
 
     def start(self, gamestate):
         self.gamestate = gamestate
+        self.sound_manager.volume(gamestate.QB.sound_vol)
         self.r = []
         for n in range(5):
             self.r.append('')
@@ -543,7 +598,7 @@ class QuizScreen:
         if (self.question[-4:].rstrip()) == '.mp4':
             # Surface video player
             pixelated = True if self.gamestate.current_mode == 2 else False
-            self.vsprite = videoplayer.VideoSprite(self.q_surface, self.question, gamestate.QB.sound_vol, pixelated)
+            self.vsprite = videoplayer.VideoSprite(self.q_surface, self.question, self.sound_manager, pixelated)
             self.vsprite_group = pygame.sprite.Group()
             self.vsprite_group.add(self.vsprite)
         else:
@@ -558,12 +613,11 @@ class QuizScreen:
         self.vinput = 0
         self.back_img = self.static_bkg_img.copy()
         SCREEN.blit(self.background, (0, 0))
-        #self.background.blit(self.back_img, (0, 0))
         if (self.question[-4:].rstrip()) != '.mp4':
-            draw_text(self.back_img, self.question, TEXT_COLOR, self.q_surface, 3, 2)
+            DrawText(self.back_img, self.question, TEXT_COLOR, self.q_surface, 3, 2)
         n = 1
         for rect in self.rects:
-            draw_text(self.back_img, self.r[n], TEXT_COLOR, self.resps[n-1])
+            DrawText(self.back_img, self.r[n], TEXT_COLOR, self.resps[n-1])
             n += 1
         pygame.display.flip()
         self.countdown_list = pygame.sprite.Group()
@@ -590,14 +644,14 @@ class QuizScreen:
             n += 1
 
         subsurface = self.static_bkg_img.subsurface((int(SCREEN.get_width()*0.8),0,int(SCREEN.get_width()*0.2),SCREEN.get_height()//2))
-        # subsurface = subsurface.copy()
         self.back_img.blit(subsurface, (int(SCREEN.get_width()*0.8), 0))
         score_col = TEXT_COLOR
         updown = ''
-        if self.reveal and self.vinput != 0:
+        if self.reveal:
+            if self.vinput != 0:
                 score_col = BOX_COLOR_ANSWER if self.vinput == self.answer else BOX_COLOR_WRONG
                 updown = "up" if self.vinput == self.answer else "down"
-                draw_text(self.back_img, 'Press [A] to continue', TEXT_COLOR, self.contsurf, 0, 2)
+            DrawText(self.back_img, 'Press [A] to continue', TEXT_COLOR, self.contsurf, 0, 2)
         scoretext = self.scorefont.render('SCORE {}: {}'.format(updown,self.gamestate.score[1]), True, score_col)
         self.back_img.blit(scoretext, (int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.4)))
         turntext = self.scorefont.render('QUESTION: {}/{}'.format(self.gamestate.numq,self.gamestate.QB.number_q), True, TEXT_COLOR)
@@ -609,43 +663,50 @@ class QuizScreen:
              self.vsprite_group.update(int(self.passed_time/1000), self.gamestate.QB.timer)
              self.vsprite_group.draw(self.back_img)
 
-        if self.reveal:
-            try:
-                if self.vsprite_group is not None:
-                    if self.vsprite is not None:
-                        if self.vsprite.video_stop is False:
-                            self.vsprite.stop()
-            except:
-                pass
         SCREEN.blit(self.background, (0, 0))
 
     def update(self, events, dt):
-        for event in events:
-            if self.gamestate.numqansw >= self.gamestate.numq:
-                break
-            if self.reveal == False:
-                if key_pressed (event, JOYSTICKS[0]) == 'up':
-                    self.vinput = 1
-                elif key_pressed (event, JOYSTICKS[0]) == 'left':
-                    self.vinput = 2
-                elif key_pressed (event, JOYSTICKS[0]) == 'right':
-                    self.vinput = 4
-                elif key_pressed (event, JOYSTICKS[0]) == 'down':
-                    self.vinput = 3
-                if self.vinput != 0:
-                    self.gamestate.get_answer(self.vinput,
-                        int(self.passed_time/1000 if self.passed_time/1000 < self.gamestate.QB.timer
-                        else self.gamestate.QB.timer))
-                    self.reveal = True
-                    log("Reveal answer")
         if self.reveal == False :
             self.passed_time = self.start_time - pygame.time.get_ticks()
+            for event in events:
+                if self.gamestate.numqansw >= self.gamestate.numq:
+                    break
+                if self.reveal == False:
+                    if key_pressed (event, JOYSTICKS[0]) == 'up':
+                        self.vinput = 1
+                    elif key_pressed (event, JOYSTICKS[0]) == 'left':
+                        self.vinput = 2
+                    elif key_pressed (event, JOYSTICKS[0]) == 'right':
+                        self.vinput = 4
+                    elif key_pressed (event, JOYSTICKS[0]) == 'down':
+                        self.vinput = 3
+                    if self.vinput != 0:
+                        res = self.gamestate.get_answer(self.vinput,
+                            int(self.passed_time/1000 if self.passed_time/1000 < self.gamestate.QB.timer
+                            else self.gamestate.QB.timer))
+                        if self.gamestate.QB.sound_vol > 0:
+                            if res:
+                                self.sound_manager.play('assets/playerright.wav')
+                            else:
+                                self.sound_manager.play('assets/playeranswered.wav')
+                        self.reveal = True
+                        log("Reveal answer")
             if (self.passed_time <= 0):
                 self.passed_time = 0
                 self.reveal = True
                 log("Time's up")
+                self.sound_manager.play('assets/timeout.wav')
                 self.vinput = 0
         else:
+            try:
+                if self.vsprite_group is not None:
+                    if self.vsprite is not None:
+                        if self.vsprite.video_stop is False:
+                            log ("Stop video sprite")
+                            self.vsprite.stop()
+            except:
+                log ("Error while killing video sprite")
+                pass
             for event in events:
                 if key_pressed (event, JOYSTICKS[0]) == 'action':
                     log ("Next screen")
@@ -655,6 +716,7 @@ class QuizScreen:
                         score = self.gamestate.get_result()
                         del self.gamestate # Reset for next game
                         return ('RESULT', score)
+            return None
 
 #######################################
 ### Main Loop
@@ -670,7 +732,7 @@ def main():
     loghandler.setFormatter(logformat)
     LOGGER.addHandler(loghandler)
     os.environ['SDL_AUDIODRIVER'] = 'alsa'
-    pygame.mixer.pre_init(frequency=44100)
+    pygame.mixer.pre_init(frequency=AUDIO_FREQ, buffer=AUDIO_BUFFER)
     pygame.init()
     pygame.mouse.set_visible(0)
     infoObject = pygame.display.Info()

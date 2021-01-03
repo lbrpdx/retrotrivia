@@ -5,15 +5,16 @@
 # License: LGPL 3.0
 import pygame
 import subprocess
+import os
 
-FFMPEG_BIN       = "/usr/bin/ffmpeg"   # Full path to ffmpeg executable
-SOUND_VOL        = 0.7   # FIXME: to sync up with GameState object
+FFMPEG_BIN       = '/usr/bin/ffmpeg'   # Full path to ffmpeg executable
+TMP_AUDIO_FILE   = '/tmp/retrotrivia_audio.wav'
 
 #######################################
 ### Video to PyGame converter
 class VideoSprite(pygame.sprite.Sprite):
 
-    def __init__(self, rect, filename, sound_volume, pixelated, FPS=30):
+    def __init__(self, rect, filename, sound_manager, pixelated, FPS=30):
         pygame.sprite.Sprite.__init__(self)
         commandvideo = [ FFMPEG_BIN,
                 '-loglevel', 'quiet',
@@ -28,7 +29,7 @@ class VideoSprite(pygame.sprite.Sprite):
                 '-i', filename, '-vn',
                 '-c:a', 'pcm_s16le',
                 '-b:a', '128k',
-                '/tmp/retrotrivia_audio.wav' ]
+                TMP_AUDIO_FILE ]
         self.bytes_per_frame = rect.width * rect.height * 3
         self.procvideo   = subprocess.Popen(commandvideo, stdout=subprocess.PIPE, bufsize=self.bytes_per_frame*3)
         self.procaudio   = subprocess.call(commandaudio, stdout=subprocess.PIPE, bufsize=1024*1024)
@@ -40,21 +41,16 @@ class VideoSprite(pygame.sprite.Sprite):
         self.last_at     = 0           # time frame starts to show
         self.frame_delay = 1000 / FPS  # milliseconds duration to show frame
         # audio
-        self.audiotrack  = None
-        if sound_volume > 0:
-            self.audiotrack=pygame.mixer.Sound('/tmp/retrotrivia_audio.wav')
-            self.audiotrack.set_volume(0.2*sound_volume)
-            self.audiotrack.play()
+        if os.path.isfile(TMP_AUDIO_FILE):
+            sound_manager.play(TMP_AUDIO_FILE)
         # and tell when to stop it
         self.video_stop  = False
         # optional pixelate effect
         self.pixelated   = pixelated
-        self.coeff       = 2 # how slow you want to un-pixelate
+        self.coeff       = 2.5 # how slow you want to un-pixelate
 
     def stop(self):
         self.video_stop  = True
-        if self.audiotrack:
-            self.audiotrack.stop()
 
     def update(self, timer, tmax):
         if (not self.video_stop):
@@ -69,7 +65,6 @@ class VideoSprite(pygame.sprite.Sprite):
                         if timer > 3:
                             mmax = max (timer, tmax)
                             (px, py) = (pow(2,int((mmax - timer +1)/self.coeff)), pow(2,int((mmax - timer +1)/self.coeff)))
-                            # print ((px,py))
                             if (px, py) < (self.rect.width, self.rect.height):
                                 img_temp = pygame.transform.scale(img_temp, (px,py))
                         self.image = pygame.transform.scale(img_temp, (self.rect.width, self.rect.height))
