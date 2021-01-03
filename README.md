@@ -9,6 +9,7 @@ You will be asked questions about your retro video games, and some general retro
 Several gaming modes ara available:
  - 120+ handcrafted trivia questions
  - video thumbnails: guess what game is shown
+ - pixelate: same as video thumbnails, but pixelated video (listen carefully to the audio track!)
 
 Rules: you have a countdown timer for each question. You need to answer before the countdown times out. Let's say you give your answer with 5 seconds left on the timer: if your answer is correct, you score 5 points, if not, you lose 5 points. Be fast, be bold: you won't go below 0 on your score.
 
@@ -33,6 +34,8 @@ Retrotrivia is [free and opensource software](https://en.wikipedia.org/wiki/Free
 All the code is given under the [LGPL v3](https://www.gnu.org/licenses/lgpl-3.0.html) license. All the code and video game assets can be freely modified and redistributed as long as this README.md file is distributed with it, in its original form.
 
 ## How can you contribute?
+
+Please, let me know if you face issues and bugs. I am chasing an audio bug that randomly appears and might be linked to SDL or pygame. If the game crashes, please send me the logs/es_launch_stderr.log file, and let me know if the bug still appears when you put the "sound volume" to zero in the settings.
 
 Feel free to submit PRs, this game is meant to be enriched by the community. If you don't know how to code, you can still probably help with graphic design, sounds, additional trivia questions and so on.
 
