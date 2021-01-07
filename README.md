@@ -13,8 +13,10 @@ Several gaming modes ara available:
 
 Rules: you have a countdown timer for each question. You need to answer before the countdown times out. Let's say you give your answer with 5 seconds left on the timer: if your answer is correct, you score 5 points, if not, you lose 5 points. Be fast, be bold: you won't go below 0 on your score.
 
+Oh, and you can play with up to 4 players for a friendly competition.
+
 In future releases:
- - multi-player
+ - new trivia questions (please feel free to contribute!)
  - other game modes...
 
 ## Installation
@@ -24,7 +26,7 @@ This game is primarily meant to be used with [Batocera](https://batocera.org/). 
 On Batocera, get the files from this GitHub repository, and put them into `/userdata/roms/pygame/retrotrivia`.
 
 Controls:
- - D-Pad to select the answer.
+ - D-Pad to select the answer (or analog stick)
  - A (or B) button to select/move to the next question.
 
 ## License
