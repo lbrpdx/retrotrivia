@@ -13,8 +13,7 @@ TMP_AUDIO_FILE   = '/tmp/retrotrivia_audio.wav'
 #######################################
 ### Video to PyGame converter
 class VideoSprite(pygame.sprite.Sprite):
-
-    def __init__(self, rect, filename, sound_manager, pixelated, FPS=30):
+    def __init__(self, rect, filename, sound_manager, mode, FPS=30):
         pygame.sprite.Sprite.__init__(self)
         commandvideo = [ FFMPEG_BIN,
                 '-loglevel', 'quiet',
@@ -46,8 +45,9 @@ class VideoSprite(pygame.sprite.Sprite):
         # and tell when to stop it
         self.video_stop  = False
         # optional pixelate effect
-        self.pixelated   = pixelated
+        self.mode        = mode
         self.coeff       = 2.5 # how slow you want to un-pixelate
+        self.time_start  = pygame.time.get_ticks()
 
     def stop(self):
         self.video_stop  = True
@@ -60,7 +60,7 @@ class VideoSprite(pygame.sprite.Sprite):
                 try:
                     raw_image = self.procvideo.stdout.read(self.bytes_per_frame)
                     img_temp = pygame.image.frombuffer(raw_image, (self.rect.width, self.rect.height), 'RGB')
-                    if self.pixelated:
+                    if self.mode == "pixelated":
                         # timer in second: don't pixellate if < 3 sec left
                         if timer > 3:
                             mmax = max (timer, tmax)
@@ -68,6 +68,12 @@ class VideoSprite(pygame.sprite.Sprite):
                             if (px, py) < (self.rect.width, self.rect.height):
                                 img_temp = pygame.transform.scale(img_temp, (px,py))
                         self.image = pygame.transform.scale(img_temp, (self.rect.width, self.rect.height))
+                    elif self.mode == "rotated":
+                        self.image = pygame.transform.rotozoom(img_temp, (180-(time_now-self.time_start)/10)%360, 1).convert_alpha()
+                        (x, y) = self.rect.center
+                        self.image = pygame.transform.scale(self.image, (self.rect.width, self.rect.height)).convert_alpha()
+                        self.rect = self.image.get_rect()
+                        self.rect.center = (x,y)
                     else:
                         self.image = img_temp
                     #self.proc.stdout.flush()  - doesn't seem to be necessary

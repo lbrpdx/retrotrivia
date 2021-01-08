@@ -34,8 +34,8 @@ BOX_COLOR_WRONG  = 'red'
 BOX_WIDTH        = 4
 TIMER_COLOR      = 'green'
 TIMER_COLOR_END  = 'red'
-GAMEMODES_NAMES  = [ 'Video', 'Trivia', 'Pixelate' ]
-GAMEMODES        = [ 1, 1, 1 ]
+GAMEMODES_NAMES  = [ 'Video', 'Trivia', 'Pixel', 'Rotate' ]
+GAMEMODES        = [ 1, 1, 1, 1 ]
 PLAYERS_MAX      = 4
 NUM_QUESTIONS_MAX= 30
 TIMER_MAX        = 30
@@ -252,7 +252,7 @@ class GameState:
         self.questionsv         = {}   # video thumbnails questions
         self.right              = [ 0, 0, 0, 0 ]
         self.wrong              = [ 0, 0, 0, 0 ]
-        self.score              = [ 0, 0, 0, 0 ] # FIXME one for each player, currently only player 1
+        self.score              = [ 0, 0, 0, 0 ]
         self.numq               = 0     # what question are we at?
         self.numqansw           = 0     # what question have we answered?
 
@@ -260,8 +260,8 @@ class GameState:
         log ("GameState pop question")
         if len (self.questionst) < (self.QB.number_q - self.numqansw):
             self.questionst = self.QB.triviabank[:]
-        # Remind: GAMEMODES_NAMES  = [ 'Video', 'Trivia', 'Pixelate' ]
-        if self.QB.gamemode[0] == 1 or self.QB.gamemode[2] == 1 :
+        # Remind: GAMEMODES_NAMES  = [ 'Video', 'Trivia', 'Pixel', 'Rotate' ]
+        if self.QB.gamemode[0] == 1 or self.QB.gamemode[2] == 1 or self.QB.gamemode[3] == 1:
             if len (self.questionsv) < (self.QB.number_q - self.numqansw):
                 self.questionsv = self.QB.videobank[:]
         ntry = 0
@@ -274,7 +274,7 @@ class GameState:
         self.numq += 1
         log("Question {} mode {}: ({})".format(str(self.numq), str(self.current_mode), GAMEMODES_NAMES[self.current_mode]))
         # Video (normal or pixelated)
-        if self.current_mode == 0 or self.current_mode == 2:
+        if self.current_mode == 0 or self.current_mode == 2 or self.current_mode == 3:
                 try:
                     q = random.choice(self.questionsv)
                     self.questionsv.remove(q)
@@ -388,32 +388,32 @@ class SettingsScreen:
         self.QB = QB
         self.background = pygame.Surface((SCREEN.get_width(), SCREEN.get_height()))
         self.rects_set, self.rects_down, self.rects_val, self.rects_up = [], [], [], []
-        x = 10 + SCREEN.get_width()/20
-        y = SCREEN.get_height()/6
+        x = SCREEN.get_width()//25
+        y = SCREEN.get_height()//6
         self.square = int(SCREEN.get_height()/10)
         self.settings = [ 'NUMBER OF QUESTIONS', 'TIME LIMIT', 'SOUND VOLUME', 'PLAYERS', 'GAME MODES' ]
         self.settings_val = [ NUMBER_Q, TIMER, SOUND_VOL, PLAYERS, GAMEMODES[:] ]
         for n in range(4):
-            rect_set   = pygame.Rect(int(x+self.square), y, int(SCREEN.get_width()/4+self.square), self.square)
-            rect_down  = pygame.Rect(int(x+SCREEN.get_width()/4+self.square), y, self.square, self.square)
-            rect_val   = pygame.Rect(int(x+SCREEN.get_width()/4+self.square*2.5), y, self.square, self.square)
-            rect_up    = pygame.Rect(int(x+SCREEN.get_width()/4+self.square*3.5), y, self.square, self.square)
+            rect_set   = pygame.Rect(x, y, int(SCREEN.get_width()/5+self.square), self.square)
+            rect_down  = pygame.Rect(int(x+SCREEN.get_width()/5+self.square), y, self.square, self.square)
+            rect_val   = pygame.Rect(int(x+SCREEN.get_width()/5+self.square*2.5), y, self.square, self.square)
+            rect_up    = pygame.Rect(int(x+SCREEN.get_width()/5+self.square*3.5), y, self.square, self.square)
             self.rects_set.append(rect_set)
             self.rects_down.append(rect_down)
             self.rects_val.append(rect_val)
             self.rects_up.append(rect_up)
             y += int(self.square*1.1)
         # Gamemodes
-        self.rects_gmodes = pygame.Rect(int(x+self.square), y, int(SCREEN.get_width()/4+self.square), self.square)
+        self.rects_gmodes = pygame.Rect(x, y, int(SCREEN.get_width()/5+self.square), self.square)
         self.rects_gmode = []
         self.rects_gmval = []
         for i in range(len(GAMEMODES)):
-            self.rects_gmval.append(pygame.Rect(int(x+SCREEN.get_width()/4+self.square*(1+2.5*i)), y, self.square, self.square))
-            self.rects_gmode.append(pygame.Rect(int(x+SCREEN.get_width()/4+self.square*(2.2+2.5*i)), y, 2*self.square, self.square))
+            self.rects_gmval.append(pygame.Rect(int(x+SCREEN.get_width()/5+self.square*(1+2.5*i)), y, self.square, self.square))
+            self.rects_gmode.append(pygame.Rect(int(x+SCREEN.get_width()/5+self.square*(2.2+2.5*i)), y, 2*self.square, self.square))
         y += int(self.square*1.1)
         # default and start button
-        self.rects_defaults   = pygame.Rect(int(x+SCREEN.get_width()/4+self.square), y, self.square*2, self.square)
-        self.rects_start      = pygame.Rect(int(x+SCREEN.get_width()/4+self.square*3.5), y, self.square*2, self.square)
+        self.rects_defaults   = pygame.Rect(int(x+SCREEN.get_width()/5+self.square), y, self.square*2, self.square)
+        self.rects_start      = pygame.Rect(int(x+SCREEN.get_width()/5+self.square*3.5), y, self.square*2, self.square)
         # ysel = 5rd row, 2nd button
         self.xsel, self.ysel = 1, 5
         self.up_down = [ ]
@@ -460,7 +460,7 @@ class SettingsScreen:
             self.background.blit(self.up_down[1], (self.rects_down[n].x,self.rects_down[n].y))
             subsurface = self.static_bkg_img.subsurface(self.rects_val[n])
             self.background.blit(subsurface, (self.rects_val[n].x, self.rects_val[n].y))
-            FONT.render_to(self.background, (self.rects_val[n].x+self.square/3,self.rects_val[n].y+self.square/3),\
+            FONT.render_to(self.background, (self.rects_val[n].x+self.square/10,self.rects_val[n].y+self.square/3),\
                     str(self.settings_val[n]), pygame.Color(TEXT_COLOR))
             self.background.blit(self.up_down[0], (self.rects_up[n].x,self.rects_up[n].y))
             color = BOX_COLOR_ANSWER if (n == self.ysel and self.xsel == 1) else BOX_COLOR
@@ -524,12 +524,9 @@ class SettingsScreen:
                     self.settings_val[3] = PLAYERS_MAX # 4 players max
         elif self.ysel == 4:
             # Game mode
-            if self.xsel == 0:
-                self.settings_val[4][0] = (self.settings_val[4][0]+1)%2
-            elif self.xsel == 1:
-                self.settings_val[4][1] = (self.settings_val[4][1]+1)%2
-            elif self.xsel == 2:
-                self.settings_val[4][2] = (self.settings_val[4][2]+1)%2
+            for i in range(len(GAMEMODES)):
+                if self.xsel == i:
+                    self.settings_val[4][i] = (self.settings_val[4][i]+1)%2
         elif self.ysel == 5:
             # Default and Start
             if self.xsel == 0:
@@ -552,12 +549,12 @@ class SettingsScreen:
                     self.xsel = 1
             elif key_pressed(event, JOYSTICKS)[1] == 'left':
                 if (self.ysel == 4):
-                    self.xsel = (self.xsel-1) % 3
+                    self.xsel = (self.xsel-1) % len(GAMEMODES)
                 else:
                     self.xsel = (self.xsel-1) % 2
             elif key_pressed(event, JOYSTICKS)[1] == 'right':
                 if (self.ysel == 4):
-                    self.xsel = (self.xsel+1) % 3
+                    self.xsel = (self.xsel+1) % len(GAMEMODES)
                 else:
                     self.xsel = (self.xsel+1) % 2
             elif key_pressed(event, JOYSTICKS)[1] == 'down':
@@ -597,7 +594,7 @@ class Timer(pygame.sprite.Sprite):
         self.image = None
         self.font = pygame.font.Font(SYS_FONT, 5 * int(FONT_SIZE*SCREEN.get_height()/1080))
 
-    def update (self, passed_time, max_timer, opx=5):
+    def update (self, passed_time, max_timer, opx=8):
         # Larger font for the timer
         opx=opx*SCREEN.get_height()//1080
         font_color = pygame.Color(TIMER_COLOR_END) if passed_time <= 5 else pygame.Color(TIMER_COLOR)
@@ -612,7 +609,6 @@ class Timer(pygame.sprite.Sprite):
         for dx, dy in circlepoints(opx, self.circle_cache):
             surf.blit(osurf, (dx + opx, dy + opx))
         surf.blit(textsurface, (opx, opx))
-        #self.image = self.font.render(str(passed_time if passed_time < max_timer else max_timer), True, font_color)
         self.image = surf
         self.rect = (int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.15))
 
@@ -662,7 +658,7 @@ class QuizScreen:
         self.small_ready = pygame.transform.scale(readyimg, (int(self.square/1.5), self.square//2))
         for n in range(4):
             rect = pygame.Rect(ricox[n], ricoy[n], self.square, self.square)
-            resp = pygame.Rect(int(ricox[n]+self.square*1.2), int(ricoy[n]+self.square*0.2), int(SCREEN.get_width()*0.8/2.5-self.square*1.1), self.square)
+            resp = pygame.Rect(int(ricox[n]+self.square*1.2), int(ricoy[n]+self.square*0.2), int(SCREEN.get_width()*0.8/2-self.square*1.2), self.square)
             self.rects.append(rect)
             self.resps.append(resp)
         self.countdown = Timer()
@@ -686,8 +682,13 @@ class QuizScreen:
             int((SCREEN.get_height()/2.1+self.square*3/5)*(4/3)), int(SCREEN.get_height()/2.1+self.square*3/5))
         if (self.question[-4:].rstrip()) == '.mp4':
             # Surface video player
-            pixelated = True if self.gamestate.current_mode == 2 else False
-            self.vsprite = videoplayer.VideoSprite(self.q_surface, self.question, self.sound_manager, pixelated)
+            if self.gamestate.current_mode == 2:
+                mode = "pixelated"
+            elif self.gamestate.current_mode == 3:
+                mode = "rotated"
+            else:
+                mode = "regular"
+            self.vsprite = videoplayer.VideoSprite(self.q_surface, self.question, self.sound_manager, mode)
             self.vsprite_group = pygame.sprite.Group()
             self.vsprite_group.add(self.vsprite)
         else:
@@ -732,8 +733,13 @@ class QuizScreen:
                         pygame.draw.rect(self.back_img, pygame.Color(col), rect, 0) # 0 = fill
                         self.back_img.blit(self.right_icon, (rect.x, rect.y))
             n += 1
-        subsurface = self.static_bkg_img.subsurface((int(SCREEN.get_width()*0.8),0,int(SCREEN.get_width()*0.2),SCREEN.get_height()))
+        # Timer and scores
+        subsurface = self.static_bkg_img.subsurface((int(SCREEN.get_width()*0.8),0,int(SCREEN.get_width()*0.2),SCREEN.get_height()*0.7))
         self.back_img.blit(subsurface, (int(SCREEN.get_width()*0.8), 0))
+        # Video player (except if Trivia)
+        if self.gamestate.current_mode != 1:
+            subsurface2 = self.static_bkg_img.subsurface(0,0,int(SCREEN.get_width()*0.8),int(SCREEN.get_height()/2.1+self.square))
+            self.back_img.blit(subsurface2, (0, 0))
         all_answered = 1
         if self.reveal:
             cont_text = "Everyone, " if self.gamestate.QB.players>1 else "Player 1, "
