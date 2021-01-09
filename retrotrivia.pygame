@@ -715,6 +715,7 @@ class QuizScreen:
             self.vsprite_goup = None
         self.q_surface = pygame.Rect(int(self.square*2.2), int(self.square/5),\
             int((SCREEN.get_height()/2.1+self.square*3/5)*(4/3)), int(SCREEN.get_height()/2.1+self.square*3/5))
+
         if (self.question[-4:].rstrip()) in [ '.mp4', '.mkv', '.avi', '.m4v' ]:
             # Surface video player
             if self.gamestate.current_mode == 2:
