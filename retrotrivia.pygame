@@ -28,7 +28,9 @@ SYS_FONT         = './assets/Bifocals.otf'
 FONT             = None
 FONT_SIZE        = 40
 TEXT_COLOR       = 'black'
-TEXT_HALO        = 'white'
+TEXT_HALO        = 'cadetblue3'
+TEXT_HALO_MENU   = 'plum'
+TEXT_HALO_TIMER  = 'white'
 BOX_COLOR        = 'blue'
 BOX_COLOR_ANSWER = 'green'
 BOX_COLOR_WRONG  = 'red'
@@ -49,6 +51,8 @@ AUDIO_BUFFER     = 4096
 #######################################
 ###  wrap/render text on a surface
 class DrawText:
+    circle_cache = {}
+
     def up(self, text):
         try:
             text = unicode(text, 'utf-8')
@@ -57,8 +61,8 @@ class DrawText:
         text = unicodedata.normalize('NFD', text).encode('ascii', 'ignore').decode("utf-8")
         return str(text.upper())
 
-    def __init__(self, surface, text, color, rect, yoffset=0, lineSpacing=1):
-        opx = 3
+    def __init__(self, surface, text, color, halo_color, rect, yoffset=0, lineSpacing=1):
+        opx = 5*SCREEN.get_height()//1080
         text = (self.up(text)).split('\n')
         rendtext = FONT.render("TgM") # Sample text to render
         fontHeight = int(rendtext[1][3])
@@ -77,7 +81,17 @@ class DrawText:
                     i = line.rfind(" ", 0, i) + 1
                 # render the line and blit it to the surface
                 image = FONT.render(line[:i], color)
-                surface.blit(image[0], (rect.left, y))
+                itxt = image[0].convert_alpha()
+                w = itxt.get_width() + 2 * opx
+                h = fontHeight + 2 * opx
+                osurf = pygame.Surface((w, h)).convert_alpha()
+                osurf.fill((0, 0, 0, 0))
+                surf = osurf.copy()
+                osurf.blit(FONT.render(line[:i], halo_color)[0].convert_alpha(), (0, 0))
+                for dx, dy in circlepoints(opx, self.circle_cache):
+                    surf.blit(osurf, (dx + opx, dy + opx))
+                surf.blit(itxt, (opx, opx))
+                surface.blit(surf, (rect.left, y))
                 y += int(fontHeight *(1 + 0.2* lineSpacing))
                 # remove the text we just blitted
                 line = line[i:]
@@ -98,16 +112,12 @@ class SoundManager:
 
     def play(self, sound_file):
         if pygame.mixer.get_busy():
-            #pygame.mixer.stop()
             pygame.mixer.music.stop()
         if not os.path.isfile(sound_file):
             return
-        # self.sound = pygame.mixer.Sound(sound_file)
         if self.vol > 0:
             pygame.mixer.music.load(sound_file)
             pygame.mixer.music.play(0)
-            #self.sound.set_volume(0.2*self.vol)
-            #self.sound.play()
 
 #########################################
 ## Check if a process is running (pad2key conflicts with joypad)
@@ -345,14 +355,17 @@ class GameState:
 ### Simple static Screen
 class StaticScreen:
     QB = None
+    circle_cache = {}
 
     def __init__(self, next_scene, img, text):
         self.background = pygame.Surface((SCREEN.get_width(), SCREEN.get_height()))
+        self.square = int(SCREEN.get_height()/20)
         self.img = img if img else None
         self.additional_text = text if text else None
         self.next_scene = next_scene
 
     def start(self, text):
+        opx = 5*SCREEN.get_height()//1080
         self.back_img = pygame.image.load('assets/back_cover.jpg')
         self.back_img = pygame.transform.scale(self.back_img, (SCREEN.get_width(), SCREEN.get_height()))
         self.background.blit(self.back_img, (0, 0))
@@ -361,6 +374,17 @@ class StaticScreen:
             img_ratio = self.foreground.get_width()/self.foreground.get_height()
             self.foreground = pygame.transform.scale(self.foreground, (int(SCREEN.get_width()/4),
                         int(SCREEN.get_width()/4/img_ratio)))
+            backdrop = colorize_icon(self.foreground.convert_alpha(), pygame.Color(TEXT_HALO_MENU))
+            w = backdrop.get_width() + 2 * opx
+            h = backdrop.get_height() + 2 * opx
+            osurf = pygame.Surface((w, h)).convert_alpha()
+            osurf.fill((0, 0, 0, 0))
+            surf = osurf.copy()
+            osurf.blit(backdrop, (0, 0))
+            for dx, dy in circlepoints(opx, self.circle_cache):
+                surf.blit(osurf, (dx - opx//2, dy - opx//2))
+            surf.blit(backdrop, (opx, opx))
+            self.background.blit(surf, (int(SCREEN.get_width()*0.375), int(SCREEN.get_height()/8)))
             self.background.blit(self.foreground, (int(SCREEN.get_width()*0.375), int(SCREEN.get_height()/8)))
         if text:
             if self.additional_text == None:
@@ -374,7 +398,7 @@ class StaticScreen:
         if self.additional_text:
             p_surface=pygame.Rect(SCREEN.get_width()*0.375, SCREEN.get_height()*0.3,\
                       SCREEN.get_width()/2, SCREEN.get_height()/2)
-            DrawText(self.background, self.additional_text, TEXT_COLOR, p_surface, 3, 2)
+            DrawText(self.background, self.additional_text, TEXT_COLOR, TEXT_HALO_MENU, p_surface, 3, 2)
             self.additional_text = None
 
     def update(self, events, dt):
@@ -447,48 +471,50 @@ class SettingsScreen:
         self.background.blit(self.back_img, (0, 0))
         p_surface=pygame.Rect(SCREEN.get_width()*3/8, SCREEN.get_height()/12,\
                   SCREEN.get_width()/3, SCREEN.get_height()/10)
-        DrawText(self.background, 'Settings', TEXT_COLOR, p_surface, 1, 1)
+        DrawText(self.background, 'Settings', TEXT_COLOR, TEXT_HALO_MENU, p_surface, 1, 1)
         p_surface2=pygame.Rect(SCREEN.get_width()*3/8, SCREEN.get_height()*8/10,\
                   SCREEN.get_width()/3, SCREEN.get_height()/10)
-        DrawText(self.background, '[Hotkey]+[Start] to quit', TEXT_COLOR, p_surface2, 1, 1)
+        DrawText(self.background, '[Hotkey]+[Start] to quit', TEXT_COLOR, TEXT_HALO_MENU, p_surface2, 1, 1)
         n = 0
         for rect in self.rects_val:
-            DrawText(self.background, self.settings[n], TEXT_COLOR, self.rects_set[n], 1, 1)
+            DrawText(self.background, self.settings[n], TEXT_COLOR, TEXT_HALO_MENU, self.rects_set[n], 1, 1)
             n += 1
-        DrawText(self.background, self.settings[n], TEXT_COLOR, self.rects_gmodes, 1, 1)
+        DrawText(self.background, self.settings[n], TEXT_COLOR, TEXT_HALO_MENU, self.rects_gmodes, 1, 1)
         for i in range(len(self.rects_gmode)):
-            DrawText(self.background, GAMEMODES_NAMES[i], TEXT_COLOR, self.rects_gmode[i], 1, 1)
+            DrawText(self.background, GAMEMODES_NAMES[i], TEXT_COLOR, TEXT_HALO_MENU, self.rects_gmode[i], 1, 1)
 
     def draw(self):
-        self.back_img = self.static_bkg_img.copy()
         SCREEN.blit(self.background, (0, 0))
         n = 0
         for rect in self.rects_val:
-            color = BOX_COLOR_ANSWER if (n == self.ysel and self.xsel == 0) else BOX_COLOR
-            pygame.draw.rect(self.background, pygame.Color(color), self.rects_down[n], int(BOX_WIDTH*SCREEN.get_height() / 1080))
+            color = BOX_COLOR if (n == self.ysel and self.xsel == 0) else TEXT_HALO_MENU
+            pygame.draw.rect(self.background, pygame.Color(color), self.rects_down[n], int(BOX_WIDTH*SCREEN.get_height() / 1080), border_radius=self.square//4)
             self.background.blit(self.up_down[1], (self.rects_down[n].x,self.rects_down[n].y))
             subsurface = self.static_bkg_img.subsurface(self.rects_val[n])
             self.background.blit(subsurface, (self.rects_val[n].x, self.rects_val[n].y))
-            FONT.render_to(self.background, (self.rects_val[n].x+self.square/10,self.rects_val[n].y+self.square/3),\
-                    str(self.settings_val[n]), pygame.Color(TEXT_COLOR))
+            rct = pygame.Rect(self.rects_val[n].x+self.square/10, self.rects_val[n].y+self.square/3, self.square, self.square)
+            DrawText(self.background, str(self.settings_val[n]), TEXT_COLOR, TEXT_HALO_MENU, rct)
             self.background.blit(self.up_down[0], (self.rects_up[n].x,self.rects_up[n].y))
-            color = BOX_COLOR_ANSWER if (n == self.ysel and self.xsel == 1) else BOX_COLOR
-            pygame.draw.rect(self.background, pygame.Color(color), self.rects_up[n], int(BOX_WIDTH*SCREEN.get_height() / 1080))
+            color = BOX_COLOR if (n == self.ysel and self.xsel == 1) else TEXT_HALO_MENU
+            pygame.draw.rect(self.background, pygame.Color(color), self.rects_up[n], int(BOX_WIDTH*SCREEN.get_height() / 1080), border_radius=self.square//4)
             n += 1
         for i in range(len(self.rects_gmode)):
-            color = BOX_COLOR_ANSWER if (4 == self.ysel and self.xsel == i) else BOX_COLOR
             ico = self.right_icon if self.settings_val[4][i] == 1 else self.wrong_icon
             subsurface = self.static_bkg_img.subsurface(self.rects_gmval[i])
             self.background.blit(subsurface, (self.rects_gmval[i].x, self.rects_gmval[i].y))
             self.background.blit(ico, (self.rects_gmval[i].x,self.rects_gmval[i].y))
-            pygame.draw.rect(self.background, pygame.Color(color), self.rects_gmval[i], int(BOX_WIDTH*SCREEN.get_height() / 1080))
-        # defaults and start
-        color = BOX_COLOR_ANSWER if (5 == self.ysel and self.xsel == 0) else BOX_COLOR
-        pygame.draw.rect(self.background, pygame.Color(color), self.rects_defaults, int(BOX_WIDTH*SCREEN.get_height() / 1080))
-        FONT.render_to(self.background, (self.rects_defaults.x+self.square/4,self.rects_defaults.y+self.square/2.5), 'DEFAULT', pygame.Color(TEXT_COLOR))
-        color = BOX_COLOR_ANSWER if (5 == self.ysel and self.xsel == 1) else BOX_COLOR
-        pygame.draw.rect(self.background, pygame.Color(color), self.rects_start, int(BOX_WIDTH*SCREEN.get_height() / 1080))
-        FONT.render_to(self.background, (self.rects_start.x+self.square/2.5,self.rects_start.y+self.square/2.5), 'START', pygame.Color(TEXT_COLOR))
+            color = BOX_COLOR if (4 == self.ysel and self.xsel == i) else TEXT_HALO_MENU
+            pygame.draw.rect(self.background, pygame.Color(color), self.rects_gmval[i], int(BOX_WIDTH*SCREEN.get_height() / 1080), border_radius=self.square//4)
+        # defaults and start buttons
+        color = BOX_COLOR if (5 == self.ysel and self.xsel == 0) else TEXT_HALO_MENU
+        pygame.draw.rect(self.background, pygame.Color(color), self.rects_defaults, int(BOX_WIDTH*SCREEN.get_height() / 1080), border_radius=self.square//4)
+        rct = pygame.Rect(self.rects_defaults.x+self.square/20, self.rects_defaults.y+self.square/3, self.square*3, self.square)
+        DrawText(self.background, 'DEFAULTS', TEXT_COLOR, TEXT_HALO_MENU, rct)
+        color = BOX_COLOR if (5 == self.ysel and self.xsel == 1) else TEXT_HALO_MENU
+        pygame.draw.rect(self.background, pygame.Color(color), self.rects_start, int(BOX_WIDTH*SCREEN.get_height() / 1080), border_radius=self.square//4)
+        rct = pygame.Rect(self.rects_start.x+self.square/2.5, self.rects_defaults.y+self.square/3, self.square*3, self.square)
+        greylevel = (pygame.time.get_ticks()/10)%255
+        DrawText(self.background, 'START', (greylevel/4, greylevel, greylevel/2), TEXT_HALO_MENU, rct)
 
     def action(self):
         if self.ysel == 0:
@@ -614,7 +640,7 @@ class Timer(pygame.sprite.Sprite):
         osurf = pygame.Surface((w, h + 2 * opx)).convert_alpha()
         osurf.fill((0, 0, 0, 0))
         surf = osurf.copy()
-        osurf.blit(self.font.render(text, True, TEXT_HALO).convert_alpha(), (0, 0))
+        osurf.blit(self.font.render(text, True, TEXT_HALO_TIMER).convert_alpha(), (0, 0))
         for dx, dy in circlepoints(opx, self.circle_cache):
             surf.blit(osurf, (dx + opx, dy + opx))
         surf.blit(textsurface, (opx, opx))
@@ -689,7 +715,8 @@ class QuizScreen:
             self.vsprite_goup = None
         self.q_surface = pygame.Rect(int(self.square*2.2), int(self.square/5),\
             int((SCREEN.get_height()/2.1+self.square*3/5)*(4/3)), int(SCREEN.get_height()/2.1+self.square*3/5))
-        if (self.question[-4:].rstrip()) in [ '.mp4', '.mkv' ]:
+
+        if (self.question[-4:].rstrip()) in [ '.mp4', '.mkv', '.avi', '.m4v' ]:
             # Surface video player
             if self.gamestate.current_mode == 2:
                 mode = "pixelated"
@@ -703,8 +730,8 @@ class QuizScreen:
         else:
             self.vsprite = None
             self.vsprite_goup = None
-        self.contsurf = pygame.Rect(int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.8),\
-                                int(SCREEN.get_width()*0.2), int(SCREEN.get_height()*0.2))
+        self.contsurf = pygame.Rect(int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.82),\
+                                int(SCREEN.get_width()*0.2), int(SCREEN.get_height()*0.18))
         self.timer_started = True
         self.start_time = pygame.time.get_ticks() + gamestate.QB.timer * 1000 + 950 # margin to draw screen
         self.passed_time = self.start_time
@@ -714,10 +741,10 @@ class QuizScreen:
         self.back_img = self.static_bkg_img.copy()
         SCREEN.blit(self.background, (0, 0))
         if (self.question[-4:].rstrip()) != '.mp4':
-            DrawText(self.back_img, self.question, TEXT_COLOR, self.q_surface, 3, 2)
+            DrawText(self.back_img, self.question, TEXT_COLOR, TEXT_HALO, self.q_surface, 3, 2)
         n = 1
         for rect in self.rects:
-            DrawText(self.back_img, self.r[n], TEXT_COLOR, self.resps[n-1])
+            DrawText(self.back_img, self.r[n], TEXT_COLOR, TEXT_HALO, self.resps[n-1])
             n += 1
         self.countdown_list = pygame.sprite.Group()
         self.countdown_list.add(self.countdown)
@@ -734,13 +761,13 @@ class QuizScreen:
             if self.reveal:
                 for p in range(self.gamestate.QB.players):
                     if n == self.vinput[p]:
-                        col = BOX_COLOR_WRONG
-                        pygame.draw.rect(self.back_img, pygame.Color(col), rect, 0) # 0 = fill
-                        self.back_img.blit(self.wrong_icon, (rect.x, rect.y))
+                        pygame.draw.rect(self.back_img, pygame.Color(TEXT_COLOR), rect, 0, border_radius=self.square//4) # 0 = fill
+                        ico = colorize_icon(self.wrong_icon, pygame.Color(BOX_COLOR_WRONG))
+                        self.back_img.blit(ico, (rect.x, rect.y))
                     if n == self.answer:
-                        col = BOX_COLOR_ANSWER
-                        pygame.draw.rect(self.back_img, pygame.Color(col), rect, 0) # 0 = fill
-                        self.back_img.blit(self.right_icon, (rect.x, rect.y))
+                        pygame.draw.rect(self.back_img, pygame.Color(TEXT_COLOR), rect, 0, border_radius=self.square//4) # 0 = fill
+                        ico = colorize_icon(self.right_icon, pygame.Color(BOX_COLOR_ANSWER))
+                        self.back_img.blit(ico, (rect.x, rect.y))
             n += 1
         # Timer and scores
         subsurface = self.static_bkg_img.subsurface((int(SCREEN.get_width()*0.8),0,int(SCREEN.get_width()*0.2),SCREEN.get_height()*0.7))
@@ -752,37 +779,46 @@ class QuizScreen:
         all_answered = 1
         if self.reveal:
             cont_text = "Everyone, " if self.gamestate.QB.players>1 else "Player 1, "
-            cont_text += "press [A] to continue"
+            cont_text += "\n press [A]\n  to continue"
             greylevel = (pygame.time.get_ticks()/10)%255
-            DrawText(self.back_img, cont_text, (greylevel/4 ,greylevel/2 ,greylevel), self.contsurf, 0, 2)
+            DrawText(self.back_img, cont_text, (greylevel/4 ,greylevel, greylevel/2), TEXT_HALO, self.contsurf, 0, 2)
         scorey= int(SCREEN.get_height()*0.4)
-        scoretext = self.scorefont.render('SCORE BOARD:', True, TEXT_COLOR)
-        self.back_img.blit(scoretext, (int(SCREEN.get_width()*0.8), scorey))
+        rct = pygame.Rect(int(SCREEN.get_width()*0.8), scorey,\
+                  int(SCREEN.get_width()*0.2), int(self.square//2))
+        DrawText(self.back_img, 'SCORE BOARD:', TEXT_COLOR, TEXT_HALO, rct)
         for p in range(self.gamestate.QB.players):
-            reponse = pygame.Surface((0,0))
-            ready = pygame.Surface((0,0))
+            reponse     = pygame.Surface((0, 0))
+            surfreponse = pygame.Rect(0, 0, 0, 0)
+            ready       = pygame.Surface((0, 0))
             scorey += int(self.square*0.5)
-            stxt = "P{}: {}".format(p+1,self.gamestate.score[p])
             if self.reveal:
                 if self.vinput[p] == 1:
                     reponse = self.small_arrows[0]
+                    surfreponse = pygame.Rect(int(SCREEN.get_width()*0.9), scorey, self.square//2, self.square//2)
                 elif self.vinput[p] == 2:
                     reponse = self.small_arrows[1]
+                    surfreponse = pygame.Rect(int(SCREEN.get_width()*0.9), scorey, self.square//2, self.square//2)
                 elif self.vinput[p] == 3:
                     reponse = self.small_arrows[2]
+                    surfreponse = pygame.Rect(int(SCREEN.get_width()*0.9), scorey, self.square//2, self.square//2)
                 elif self.vinput[p] == 4:
                     reponse = self.small_arrows[3]
+                    surfreponse = pygame.Rect(int(SCREEN.get_width()*0.9), scorey, self.square//2, self.square//2)
             ready = self.small_ready if self.ready[p] else pygame.Surface((0,0))
-            scoretext = self.scorefont.render(stxt, True, TEXT_COLOR)
-            self.back_img.blit(scoretext, (int(SCREEN.get_width()*0.8), int(scorey+(self.square/10))))
+            rct = pygame.Rect(int(SCREEN.get_width()*0.8), int(scorey+(self.square/10)),\
+                  int(SCREEN.get_width()*0.2), int(self.square//2))
+            DrawText(self.back_img, "P{}: {}".format(p+1,self.gamestate.score[p]), TEXT_COLOR, TEXT_HALO, rct)
             if self.vinput[p] == self.answer:
                 reponse = colorize_icon(reponse, pygame.Color(BOX_COLOR_ANSWER))
             else:
                 reponse = colorize_icon(reponse, pygame.Color(BOX_COLOR_WRONG))
+            pygame.draw.rect(self.back_img, pygame.Color(TEXT_COLOR), surfreponse, 0, border_radius=self.square//8) # 0 = fill
             self.back_img.blit(reponse, (int(SCREEN.get_width()*0.9), scorey))
             self.back_img.blit(ready, (int(SCREEN.get_width()*0.93), scorey))
-        turntext = self.scorefont.render('QUESTION: {}/{}'.format(self.gamestate.numq,self.gamestate.QB.number_q), True, TEXT_COLOR)
-        self.back_img.blit(turntext, (int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.05)))
+        rct = pygame.Rect((int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.05),\
+                  int(SCREEN.get_width()*0.2), int(SCREEN.get_height()*0.10)))
+        DrawText(self.back_img, 'QUESTION: {}/{}'.format(self.gamestate.numq,self.gamestate.QB.number_q),\
+                  TEXT_COLOR, TEXT_HALO, rct)
         self.countdown_list.update(int(self.passed_time/1000), self.gamestate.QB.timer)
         self.countdown_list.draw(self.back_img)
         if self.vsprite_group is not None:
@@ -919,7 +955,7 @@ def main():
             if e.type == pygame.QUIT:
                 return
             try:
-                if JOYSTICKS[0] and JOYSTICKS[0].get_button(12) and JOYSTICKS[0].get_button(17): # hotkey + start for player 1
+                if JOYSTICKS[0] and JOYSTICKS[0].get_button(12) and JOYSTICKS[0].get_button(17): # hotkey + start for player 1 only
                     return
             except:
                 pass
