@@ -31,6 +31,10 @@ class VideoSprite(pygame.sprite.Sprite):
                 TMP_AUDIO_FILE ]
         self.bytes_per_frame = rect.width * rect.height * 3
         self.procvideo   = subprocess.Popen(commandvideo, stdout=subprocess.PIPE, bufsize=self.bytes_per_frame*3)
+        try:
+            os.remove(TMP_AUDIO_FILE)
+        except:
+            pass
         self.procaudio   = subprocess.call(commandaudio, stdout=subprocess.PIPE, bufsize=1024*1024)
         self.image       = pygame.Surface((rect.width, rect.height), pygame.HWSURFACE)
         self.rect        = self.image.get_rect()
@@ -69,7 +73,7 @@ class VideoSprite(pygame.sprite.Sprite):
                                 img_temp = pygame.transform.scale(img_temp, (px,py))
                         self.image = pygame.transform.scale(img_temp, (self.rect.width, self.rect.height))
                     elif self.mode == "rotated":
-                        self.image = pygame.transform.rotozoom(img_temp, (180-(time_now-self.time_start)/10)%360, 1).convert_alpha()
+                        self.image = pygame.transform.rotate(img_temp, (180-(time_now-self.time_start)/20)%360).convert_alpha()
                         (x, y) = self.rect.center
                         self.image = pygame.transform.scale(self.image, (self.rect.width, self.rect.height)).convert_alpha()
                         self.rect = self.image.get_rect()
