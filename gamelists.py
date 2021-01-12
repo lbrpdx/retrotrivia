@@ -15,10 +15,13 @@ SYSTEMS   = [  '3do', '3ds', 'amiga1200', 'amiga500', 'amigacd32', 'amigacdtv', 
 
 class gamelist:
     def __init__(self):
-        self.Q =[]
-        self.loaded_systems = []
+        self.Q = []
+        self.systems = SYSTEMS
 
     def load(self, system):
+        q = []
+        if not os.path.isfile(BASEPATH+system+XML):
+            return q
         self.tree = ET.parse(BASEPATH+system+XML)
         root = self.tree.getroot()
         setgames = set()
@@ -26,10 +29,8 @@ class gamelist:
             short=item.text.split('(')[0] # Remove (USA, Europe...)
             setgames.add(short.rstrip(' '))
         allgames = [n for n in setgames]
-        self.loaded_systems.append(" - {} with {} games".format(system, str(len(allgames))))
         if len(allgames) < MIN_GAMES:
-            return
-
+            return q
         indexed_games = 0
         for item in root.findall('game'):
             vid = item.find('video')
@@ -57,16 +58,15 @@ class gamelist:
                     for i in list (range(4)):
                         line[1+it[i]]=res[i]
                     out = tuple(line)
-                    self.Q.append(out)
+                    q.append(out)
                     indexed_games += 1
                     if indexed_games >= MAX_GAMES:
-                        self.loaded_systems.append("   {} hits the max games number ({})".format(system, str(MAX_GAMES)))
-                        return
+                        return q
+        return q
 
     def load_all(self):
-        for sys in SYSTEMS:
-            if os.path.isfile(BASEPATH+sys+XML):
-                self.load(sys)
+        for sys in self.systems:
+            self.Q.append(self.load(sys))
         return self.Q
 
     def show(self):
@@ -75,4 +75,5 @@ class gamelist:
 
 if __name__ == '__main__':
     gl = gamelist()
+    gl.load_all()
     gl.show()
