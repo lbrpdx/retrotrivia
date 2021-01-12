@@ -15,6 +15,8 @@ import sys
 import psutil
 import logging
 import unicodedata
+import math
+import threading
 
 #######################################
 ### Global parameters
@@ -61,8 +63,8 @@ class DrawText:
         text = unicodedata.normalize('NFD', text).encode('ascii', 'ignore').decode("utf-8")
         return str(text.upper())
 
-    def __init__(self, surface, text, color, halo_color, rect, yoffset=0, lineSpacing=1):
-        opx = 5*SCREEN.get_height()//1080
+    def __init__(self, surface, text, color, halo_color, rect, yoffset=0, lineSpacing=1, defopx=5):
+        opx = defopx*SCREEN.get_height()//1080
         text = (self.up(text)).split('\n')
         rendtext = FONT.render("TgM") # Sample text to render
         fontHeight = int(rendtext[1][3])
@@ -236,9 +238,8 @@ def colorize_icon(image, color):
 #######################################
 ### List and types of questions
 class QuestionBank:
-    triviabank     = None
-    videobank      = None
-    loaded_systems = None
+    triviabank     = []
+    videobank      = []
     loaded         = 0          # number of questions loaded
     gamemode       = GAMEMODES  # Also save settings here
     timer          = TIMER
@@ -246,17 +247,30 @@ class QuestionBank:
     sound_vol      = SOUND_VOL
     players        = PLAYERS
     timerplayers   = [0, 0, 0, 0]
+    loaded_pcent   = 0
 
     def __init__(self):
         pass
 
     def load_all(self):
+        self.loaded_pcent = 0
         self.triviabank = questions.Q[:]
         self.loaded += len (self.triviabank)
         gl = gamelists.gamelist()
-        self.videobank = gl.load_all()[:]
+        i = 0
+        for sys in gl.systems:
+                loaded_sys = gl.load(sys)
+                self.videobank += loaded_sys[:]
+                i += 1
+                self.loaded_pcent = int(100*i/len(gl.systems))
+                log("Loaded system {} with {} games.".format(sys, len(loaded_sys)))
         self.loaded += len (self.videobank)
-        self.loaded_systems = gl.loaded_systems[:]
+        log("Total questions loaded: {} trivia, {} videos".format(len(self.triviabank), self.loaded))
+
+    def initialize_Q(self):
+        thr = threading.Thread(target=self.load_all, args=())
+        thr.daemon = True
+        thr.start()
 
 #######################################
 ### Current Game state
@@ -315,14 +329,14 @@ class GameState:
                 if vinput[p] == self.current_question[1]:
                     self.right[p] += 1
                     self.score[p] += timerpl[p]
-                    log ("Question {} was right at {} sec for player {}".format(self.numqansw, timerpl[p], p))
+                    log ("Question {} was right at {} sec for player {}".format(self.numqansw, timerpl[p], p+1))
                     ret = True
                 else:
                     self.wrong[p] += 1
                     self.score[p] -= timerpl[p]
                     if self.score[p] < 0:
                         self.score[p] = 0 # No negative score, too depressing
-                    log ("Question {} was wrong at {} sec for player {}".format(self.numqansw, timerpl[p], p))
+                    log ("Question {} was wrong at {} sec for player {}".format(self.numqansw, timerpl[p], p+1))
             return ret
 
     def get_result(self):
@@ -371,9 +385,9 @@ class StaticScreen:
         self.background.blit(self.back_img, (0, 0))
         if self.img:
             self.foreground = pygame.image.load(self.img)
-            img_ratio = self.foreground.get_width()/self.foreground.get_height()
-            self.foreground = pygame.transform.scale(self.foreground, (int(SCREEN.get_width()/4),
-                        int(SCREEN.get_width()/4/img_ratio)))
+            img_ratio = float(float(self.foreground.get_width())/self.foreground.get_height())
+            self.foreground = pygame.transform.scale(self.foreground, (int(SCREEN.get_width()/8*img_ratio),
+                        int(SCREEN.get_width()/8)))
             backdrop = colorize_icon(self.foreground.convert_alpha(), pygame.Color(TEXT_HALO_MENU))
             w = backdrop.get_width() + 2 * opx
             h = backdrop.get_height() + 2 * opx
@@ -393,12 +407,15 @@ class StaticScreen:
                 self.additional_text += text
         self.draw()
 
+    def additional(self, text):
+        self.additional_text = text
+
     def draw(self):
         SCREEN.blit(self.background, (0, 0))
         if self.additional_text:
             p_surface=pygame.Rect(SCREEN.get_width()*0.375, SCREEN.get_height()*0.3,\
                       SCREEN.get_width()/2, SCREEN.get_height()/2)
-            DrawText(self.background, self.additional_text, TEXT_COLOR, TEXT_HALO_MENU, p_surface, 3, 2)
+            DrawText(self.background, self.additional_text, TEXT_COLOR, TEXT_HALO_MENU, p_surface, 3, 2, defopx=8)
             self.additional_text = None
 
     def update(self, events, dt):
@@ -409,7 +426,7 @@ class StaticScreen:
     def initialize_QB(self):
         if self.QB == None:
             self.QB = QuestionBank()
-            self.QB.load_all()
+            self.QB.initialize_Q()
 
 
 #######################################
@@ -513,8 +530,8 @@ class SettingsScreen:
         color = BOX_COLOR if (5 == self.ysel and self.xsel == 1) else TEXT_HALO_MENU
         pygame.draw.rect(self.background, pygame.Color(color), self.rects_start, int(BOX_WIDTH*SCREEN.get_height() / 1080), border_radius=self.square//4)
         rct = pygame.Rect(self.rects_start.x+self.square/2.5, self.rects_defaults.y+self.square/3, self.square*3, self.square)
-        greylevel = (pygame.time.get_ticks()/10)%255
-        DrawText(self.background, 'START', (greylevel/4, greylevel, greylevel/2), TEXT_HALO_MENU, rct)
+        greylevel = int(math.sin(math.radians(pygame.time.get_ticks()/5%360))*127)
+        DrawText(self.background, 'START', (32+greylevel/4, 128+greylevel, 64+greylevel/2), TEXT_HALO_MENU, rct)
 
     def action(self):
         if self.ysel == 0:
@@ -780,8 +797,8 @@ class QuizScreen:
         if self.reveal:
             cont_text = "Everyone, " if self.gamestate.QB.players>1 else "Player 1, "
             cont_text += "\n press [A]\n  to continue"
-            greylevel = (pygame.time.get_ticks()/10)%255
-            DrawText(self.back_img, cont_text, (greylevel/4 ,greylevel, greylevel/2), TEXT_HALO, self.contsurf, 0, 2)
+            greylevel = int(math.sin(math.radians(pygame.time.get_ticks()/5%360))*127)
+            DrawText(self.back_img, cont_text, (32+greylevel/4 ,128+greylevel, 64+greylevel/2), TEXT_HALO, self.contsurf, 0, 2)
         scorey= int(SCREEN.get_height()*0.4)
         rct = pygame.Rect(int(SCREEN.get_width()*0.8), scorey,\
                   int(SCREEN.get_width()*0.2), int(self.square//2))
@@ -808,11 +825,14 @@ class QuizScreen:
             rct = pygame.Rect(int(SCREEN.get_width()*0.8), int(scorey+(self.square/10)),\
                   int(SCREEN.get_width()*0.2), int(self.square//2))
             DrawText(self.back_img, "P{}: {}".format(p+1,self.gamestate.score[p]), TEXT_COLOR, TEXT_HALO, rct)
+            greylevel = int(math.sin(math.radians(pygame.time.get_ticks()/2%360))*63)
             if self.vinput[p] == self.answer:
                 reponse = colorize_icon(reponse, pygame.Color(BOX_COLOR_ANSWER))
+                small_rect_color = (0, 64+greylevel, 0)
             else:
                 reponse = colorize_icon(reponse, pygame.Color(BOX_COLOR_WRONG))
-            pygame.draw.rect(self.back_img, pygame.Color(TEXT_COLOR), surfreponse, 0, border_radius=self.square//8) # 0 = fill
+                small_rect_color = (0, 0, 0)
+            pygame.draw.rect(self.back_img, small_rect_color, surfreponse, 0, border_radius=self.square//8) # 0 = fill
             self.back_img.blit(reponse, (int(SCREEN.get_width()*0.9), scorey))
             self.back_img.blit(ready, (int(SCREEN.get_width()*0.93), scorey))
         rct = pygame.Rect((int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.05),\
@@ -932,16 +952,19 @@ def main():
         PLAYERS_MAX = 1
     clock = pygame.time.Clock()
     dt = 0
-    scenes =  {'TITLE'   : StaticScreen('SETTINGS', 'assets/logo.png', '\nLOADING... PLEASE WAIT'),}
+    scenes =  {'TITLE'   : StaticScreen('SETTINGS', 'assets/logo.png', 'LOADING GAMES'),}
     scene = scenes['TITLE']
     scene.start(None)
     starttime = pygame.time.get_ticks()
     scene.draw()
     pygame.display.flip()
     scene.initialize_QB()
-    log("Loaded systems:")
-    for n in scene.QB.loaded_systems:
-        log (n)
+    while scene.QB.loaded_pcent < 100:
+        scene.additional("LOADING GAMES {}%".format(scene.QB.loaded_pcent))
+        scene.draw()
+        pygame.display.flip()
+        dt = clock.tick(60)
+        pygame.time.wait(100) # 100ms
     delta = (pygame.time.get_ticks() - starttime) // 1000
     scene.start("\n\n{} QUESTIONS\nLOADED IN {} SEC\n \nPlayer 1 Press [A] to start\n \n[Hotkey]+[start] to quit".format(scene.QB.loaded, delta))
     scenes.update({
