@@ -7,7 +7,7 @@ A trivia game for retrogaming lovers.
 
 You will be asked questions about your retro video games, and some general retro-gaming trivia. 
 Several gaming modes ara available:
- - 150+ handcrafted trivia questions
+ - 160+ handcrafted trivia questions
  - video thumbnails: guess what game is shown
  - pixelate: same as video thumbnails, but pixelated video (listen carefully to the audio track!)
  - rotozoom: like good old demo makers -- or after a severe hangover
@@ -24,7 +24,7 @@ In future releases:
 
 This game is primarily meant to be used with [Batocera](https://batocera.org/). It's been developed and tested with Batocera 29 and its [PyGame](https://www.pygame.org) installation. You can most probably adapt it to other retrogaming distribiutions using EmulationStation `gamelist.xml` classic format.
 
-On Batocera, get the files from this GitHub repository, and put them into `/userdata/roms/pygame/retrotrivia`.
+On Batocera, you can easily download a version from the Content Downloader (in the `Upgrades & Downloads` menu). Or, if you want the latest and greatest, you can get the files from this GitHub repository, and put them into `/userdata/roms/pygame/retrotrivia`.
 
 Controls:
  - D-Pad to select the answer (or analog stick)
@@ -38,7 +38,7 @@ All the code is given under the [LGPL v3](https://www.gnu.org/licenses/lgpl-3.0.
 
 ## How can you contribute?
 
-Please, let me know if you face issues and bugs. I am chasing an audio bug that randomly appears and might be linked to SDL or pygame. If the game crashes, please send me the `logs/es_launch_stderr.log` file, and let me know if the bug still appears when you put the "sound volume" to zero in the settings.
+Please, let me know if you face issues and bugs. If the game crashes, please send me the `logs/es_launch_stderr.log` file, and let me know if the bug still appears when you put the "sound volume" to zero in the settings.
 
 Feel free to submit PRs, this game is meant to be enriched by the community. If you don't know how to code, you can still probably help with graphic design, sounds, additional trivia questions and so on.
 
