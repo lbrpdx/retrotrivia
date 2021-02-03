@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Simple Quiz Game Engine in PyGame
 # for Batocera Retrotrivia
-# lbrpdx - 2020
+# lbrpdx - 2021
 # https://github.com/lbrpdx/retrotrivia
 # License: LGPL 3.0
 import pygame
@@ -49,6 +49,7 @@ JOYSTICKS        = [ None, None, None, None ]
 LOGGER           = logging.getLogger()
 AUDIO_FREQ       = 44100
 AUDIO_BUFFER     = 4096
+VIDEO_EXTENSIONS = [ '.mp4', '.mkv', '.avi', '.m4v' ]
 
 #######################################
 ###  wrap/render text on a surface
@@ -299,7 +300,7 @@ class GameState:
                 self.questionsv = self.QB.videobank[:]
         ntry = 0
         self.current_mode = (self.current_mode+1) % len(GAMEMODES)
-        while (ntry <= len(self.QB.gamemode) and self.QB.gamemode[self.current_mode] == 0):
+        while (ntry < len(self.QB.gamemode) and self.QB.gamemode[self.current_mode] == 0):
             self.current_mode = (self.current_mode+1) % len(GAMEMODES)
             ntry += 1
         if self.QB.gamemode[self.current_mode] == 0:
@@ -311,7 +312,7 @@ class GameState:
                 try:
                     q = random.choice(self.questionsv)
                     self.questionsv.remove(q)
-                except:
+                except: # not enough videos
                     q = random.choice(self.questionst)
                     self.questionst.remove(q)
         else:
@@ -729,11 +730,11 @@ class QuizScreen:
             if self.vsprite is not None:
                 self.vsprite_group.remove(self.vsprite)
                 self.vsprite = None
-            self.vsprite_goup = None
+            self.vsprite_group = None
         self.q_surface = pygame.Rect(int(self.square*2.2), int(self.square/5),\
             int((SCREEN.get_height()/2.1+self.square*3/5)*(4/3)), int(SCREEN.get_height()/2.1+self.square*3/5))
 
-        if (self.question[-4:].rstrip()) in [ '.mp4', '.mkv', '.avi', '.m4v' ]:
+        if (self.question[-4:].rstrip()) in VIDEO_EXTENSIONS:
             # Surface video player
             if self.gamestate.current_mode == 2:
                 mode = "pixelated"
@@ -746,7 +747,7 @@ class QuizScreen:
             self.vsprite_group.add(self.vsprite)
         else:
             self.vsprite = None
-            self.vsprite_goup = None
+            self.vsprite_group = None
         self.contsurf = pygame.Rect(int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.82),\
                                 int(SCREEN.get_width()*0.2), int(SCREEN.get_height()*0.18))
         self.timer_started = True
@@ -757,7 +758,7 @@ class QuizScreen:
         self.ready  = [ 0, 0, 0, 0 ]
         self.back_img = self.static_bkg_img.copy()
         SCREEN.blit(self.background, (0, 0))
-        if (self.question[-4:].rstrip()) != '.mp4':
+        if (self.question[-4:].rstrip()) not in VIDEO_EXTENSIONS:
             DrawText(self.back_img, self.question, TEXT_COLOR, TEXT_HALO, self.q_surface, 3, 2)
         n = 1
         for rect in self.rects:
@@ -790,7 +791,7 @@ class QuizScreen:
         subsurface = self.static_bkg_img.subsurface((int(SCREEN.get_width()*0.8),0,int(SCREEN.get_width()*0.2),SCREEN.get_height()*0.7))
         self.back_img.blit(subsurface, (int(SCREEN.get_width()*0.8), 0))
         # Video player (except if Trivia)
-        if self.gamestate.current_mode != 1:
+        if (self.question[-4:].rstrip()) in VIDEO_EXTENSIONS:
             subsurface2 = self.static_bkg_img.subsurface(0,0,int(SCREEN.get_width()*0.8),int(SCREEN.get_height()/2.1+self.square))
             self.back_img.blit(subsurface2, (0, 0))
         all_answered = 1
