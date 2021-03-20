@@ -154,5 +154,8 @@ Q = [
         ('Originally, when playing multi-player Doom on MS-DOS, which network protocol was used?', 4, 'TCP', 'UDP', 'RTP', 'IPX'),
         ('The first game Hideo Kojima worked on was:', 2, 'Metal Gear on NES', 'Penguin Adventure on MSX', 'Contra on NES', 'Knightmare on MSX'),
         ('In 1993, the Mega PC was a standard Intel 386 PC with a Sega Megadrive / Genesis bundled in it. Who manufactured it?', 3, 'Toshiba', 'Gateway 2000', 'Amstrad', 'Dell'),
+        ('In the english version of the game "Phantasy Star" for the master system, what is the name of the character unable to use magic in battle?', 3, 'Alis', 'Myau', 'Odin', 'Noah'),
+        ('Where is the key of the African Mines hidden in the NES game DuckTales', 1, 'Transylvania', 'The Moon', 'The Amazon', 'The Himalayas'),
+        ('In the video game "Ys - the vanished omens" for the Master system, which action triggers the ending scene?', 2, 'Equiping a sword', 'Reading a book', 'Defeating the final boss', 'Talking to a character'),
 #        ('', 4, '', '', '', ''),
      ]
