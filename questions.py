@@ -205,5 +205,8 @@ Q = [
         ('Which one is not a Nintendo 64 game?', 1, 'Diddy Kong 64', 'Donkey Kong 64', 'Diddy Kong Racing', 'Doom 64'),
         ('Bandai\'s second portable console was called what?', 2, 'WonderSwan Pocket', 'WonderSwan Color', 'WonderSwan Wonder', 'WonderSwan Anywhere'),
         ('A Sega basketball game with first-person full motion video was "Slam City with ....."', 2, 'Michael Jordan', 'Scottie Pippen', 'Shaquille O\'Neal', 'Charles Barkley'),
+        ('In the english version of the game "Phantasy Star" for the master system, what is the name of the character unable to use magic in battle?', 3, 'Alis', 'Myau', 'Odin', 'Noah'),
+        ('Where is the key of the African Mines hidden in the NES game DuckTales', 1, 'Transylvania', 'The Moon', 'The Amazon', 'The Himalayas'),
+        ('In the video game "Ys - the vanished omens" for the Master system, which action triggers the ending scene?', 2, 'Equiping a sword', 'Reading a book', 'Defeating the final boss', 'Talking to a character'),
 #        ('', 4, '', '', '', ''),
      ]
