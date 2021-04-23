@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Simple Quiz Game Engine in PyGame
 # for Batocera Retrotrivia
-# lbrpdx - 2021
+# lbrpdx - 2020/2021
 # https://github.com/lbrpdx/retrotrivia
 # License: LGPL 3.0
 import pygame
@@ -421,7 +421,7 @@ class StaticScreen:
 
     def update(self, events, dt):
         for event in events:
-            if key_pressed (event, JOYSTICKS[0]) == (0, 'action'):
+            if key_pressed (event, [JOYSTICKS[0]]) == (0, 'action'):
                 return (self.next_scene, None)
 
     def initialize_QB(self):
@@ -931,7 +931,7 @@ def main():
     pygame.mouse.set_visible(0)
     infoObject = pygame.display.Info()
     SCREEN = pygame.display.set_mode((infoObject.current_w, infoObject.current_h), WINDOW_SURFACE)
-    log ("Game screen: {}x{}".format(SCREEN.get_width(), SCREEN.get_height()))
+    log("Game screen: {}x{}".format(SCREEN.get_width(), SCREEN.get_height()))
     pygame.font.init()
     if FONT == None:
         FONT = pygame.freetype.Font(SYS_FONT, int(FONT_SIZE*SCREEN.get_height()/1080))
@@ -939,15 +939,12 @@ def main():
     njoy = pygame.joystick.get_count()
     log("Number of joysticks found: {}".format(njoy))
     pad2key = is_ps_running ('evmapy')
+    # Pad2key detection not needed any more with Py3 / Batocera 31
     for i in range(njoy):
-        if i == 0 and pad2key:
-            log("Pad2key found, ignoring joystick {} ({} / {})".format(i, pygame.joystick.Joystick(i).get_guid(),\
-                    pygame.joystick.Joystick(i).get_instance_id()))
-        else:
-            JOYSTICKS[i] = pygame.joystick.Joystick(i)
-            JOYSTICKS[i].init()
-            log("Joystick {} initialized as {} / {}".format(i, pygame.joystick.Joystick(i).get_guid(),\
-                    pygame.joystick.Joystick(i).get_instance_id()))
+        JOYSTICKS[i] = pygame.joystick.Joystick(i)
+        JOYSTICKS[i].init()
+        log("Joystick {} initialized as {} / {}".format(i, pygame.joystick.Joystick(i).get_guid(),\
+             pygame.joystick.Joystick(i).get_instance_id()))
     PLAYERS_MAX = njoy if njoy <= PLAYERS_MAX else PLAYERS_MAX
     if PLAYERS_MAX == 0:
         PLAYERS_MAX = 1

@@ -1,6 +1,6 @@
 # Simple Quiz Game Engine in PyGame
 # for Batocera Retrotrivia
-# lbrpdx - 2020
+# lbrpdx - 2020/2021
 # https://github.com/lbrpdx/retrotrivia
 # License: LGPL 3.0
 import pygame
@@ -13,18 +13,19 @@ TMP_AUDIO_FILE   = '/tmp/retrotrivia_audio.wav'
 #######################################
 ### Video to PyGame converter
 class VideoSprite(pygame.sprite.Sprite):
-    def __init__(self, rect, filename, sound_manager, mode, FPS=30):
+    def __init__(self, rect, filename, sound_manager, mode, FPS=15):
         pygame.sprite.Sprite.__init__(self)
         commandvideo = [ FFMPEG_BIN,
-                '-loglevel', 'quiet',
+                '-loglevel', 'quiet', '-nostdin',
                 '-i', filename,
                 '-f', 'image2pipe',
                 '-s', '%dx%d' % (rect.width, rect.height),
+                '-r', '%d' % FPS,
                 '-pix_fmt', 'rgb24',
-                '-vcodec', 'rawvideo', 
+                '-vcodec', 'rawvideo',
                 '-' ]
         commandaudio = [ FFMPEG_BIN,
-                '-loglevel', 'quiet', '-y',
+                '-loglevel', 'quiet', '-nostdin', '-y',
                 '-i', filename, '-vn',
                 '-c:a', 'pcm_s16le',
                 '-b:a', '128k',
@@ -42,7 +43,7 @@ class VideoSprite(pygame.sprite.Sprite):
         self.rect.y      = rect.y
         # Used to maintain frame-rate
         self.last_at     = 0           # time frame starts to show
-        self.frame_delay = 1000 / FPS  # milliseconds duration to show frame
+        self.frame_delay = 0           # milliseconds duration to show frame
         # audio
         if os.path.isfile(TMP_AUDIO_FILE):
             sound_manager.play(TMP_AUDIO_FILE)
@@ -50,7 +51,7 @@ class VideoSprite(pygame.sprite.Sprite):
         self.video_stop  = False
         # optional pixelate effect
         self.mode        = mode
-        self.coeff       = 2.5 # how slow you want to un-pixelate
+        self.coeff       = 2.5        # how slow you want to un-pixelate
         self.time_start  = pygame.time.get_ticks()
 
     def stop(self):
@@ -80,9 +81,7 @@ class VideoSprite(pygame.sprite.Sprite):
                         self.rect.center = (x,y)
                     else:
                         self.image = img_temp
-                    #self.proc.stdout.flush()  - doesn't seem to be necessary
+                    # self.proc.stdout.flush()  # doesn't seem to be necessary
                 except:
-                    # error getting data, end of file?  Black Screen it
-                    self.image = pygame.Surface((self.rect.width, self.rect.height), pygame.HWSURFACE)
-                    self.image.fill((0,0,0))
-                    self.video_stop = True
+                    # error getting data, end of file?
+                    print ("Videoplayer: error getting data")

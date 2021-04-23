@@ -22,7 +22,7 @@ In future releases:
 
 ## Installation
 
-This game is primarily meant to be used with [Batocera](https://batocera.org/). It's been developed and tested with Batocera 29 or 30 and its [PyGame](https://www.pygame.org) installation. You can most probably adapt it to other retrogaming distribiutions using EmulationStation `gamelist.xml` classic format.
+This game is primarily meant to be used with [Batocera](https://batocera.org/). It's been developed and tested with Batocera 31 (earlier releases with 29 and 30) and its [PyGame](https://www.pygame.org) installation. You can most probably adapt it to other retrogaming distribiutions using EmulationStation `gamelist.xml` classic format.
 
 On Batocera, you can easily download a version from the Content Downloader (in the `Upgrades & Downloads` menu). Or, if you want the latest and greatest, you can get the files from this GitHub repository, and put them into `/userdata/roms/pygame/retrotrivia`.
 
