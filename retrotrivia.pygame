@@ -50,6 +50,7 @@ LOGGER           = logging.getLogger()
 AUDIO_FREQ       = 44100
 AUDIO_BUFFER     = 4096
 VIDEO_EXTENSIONS = [ '.mp4', '.mkv', '.avi', '.m4v' ]
+PADS_LAST_AT     = {}
 
 #######################################
 ###  wrap/render text on a surface
@@ -105,7 +106,8 @@ class DrawText:
 class SoundManager:
     def __init__(self):
         self.sound = None
-        self.vol = 0
+        self.vol   = 0
+        self.last  = 0
         pygame.mixer.pre_init(frequency=AUDIO_FREQ, buffer=AUDIO_BUFFER)
         pygame.mixer.init()
         pygame.mixer.init(frequency=AUDIO_FREQ, buffer=AUDIO_BUFFER)
@@ -113,7 +115,16 @@ class SoundManager:
     def volume(self, new_vol):
         self.vol = new_vol
 
-    def play(self, sound_file):
+    def wait(self, delay):
+        pygame.mixer.music.pause()
+        now = pygame.time.get_ticks()
+        self.last = now
+        while (now - self.last < delay):
+            pygame.time.wait(10)
+            now = pygame.time.get_ticks()
+        pygame.mixer.music.unpause()
+
+    def play(self, sound_file, delay=0):
         if pygame.mixer.get_busy():
             pygame.mixer.music.stop()
         if not os.path.isfile(sound_file):
@@ -121,6 +132,10 @@ class SoundManager:
         if self.vol > 0:
             pygame.mixer.music.load(sound_file)
             pygame.mixer.music.play(0)
+            if delay > 0:
+                thr = threading.Thread(target=self.wait, args=[delay])
+                thr.daemon = True
+                thr.start()
 
 #########################################
 ## Check if a process is running (pad2key conflicts with joypad)
@@ -165,6 +180,15 @@ def key_pressed (event, joypads):
         if joypad == None:
             continue
         id = joypad.get_instance_id()
+        time_now = pygame.time.get_ticks()
+        try:
+            PADS_LAST_AT[id]
+        except:
+            PADS_LAST_AT[id] = 0
+        if (time_now > PADS_LAST_AT[id] + 100): # Don't double detect joypad events
+                PADS_LAST_AT[id] = time_now
+        else:
+                return (-1, -1)                 # already processed
         if event.type == pygame.JOYAXISMOTION:  # Analogue Hat
             try:
                 if joypad.get_axis(1) <= -1:

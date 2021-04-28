@@ -13,7 +13,7 @@ TMP_AUDIO_FILE   = '/tmp/retrotrivia_audio.wav'
 #######################################
 ### Video to PyGame converter
 class VideoSprite(pygame.sprite.Sprite):
-    def __init__(self, rect, filename, sound_manager, mode, FPS=15):
+    def __init__(self, rect, filename, sound_manager, mode, FPS=30):
         pygame.sprite.Sprite.__init__(self)
         commandvideo = [ FFMPEG_BIN,
                 '-loglevel', 'quiet', '-nostdin',
@@ -29,6 +29,7 @@ class VideoSprite(pygame.sprite.Sprite):
                 '-i', filename, '-vn',
                 '-c:a', 'pcm_s16le',
                 '-b:a', '128k',
+                '-r', '%d' % FPS,
                 TMP_AUDIO_FILE ]
         self.bytes_per_frame = rect.width * rect.height * 3
         self.procvideo   = subprocess.Popen(commandvideo, stdout=subprocess.PIPE, bufsize=self.bytes_per_frame*3)
@@ -42,11 +43,11 @@ class VideoSprite(pygame.sprite.Sprite):
         self.rect.x      = rect.x
         self.rect.y      = rect.y
         # Used to maintain frame-rate
-        self.last_at     = 0           # time frame starts to show
-        self.frame_delay = 0           # milliseconds duration to show frame
+        self.last_at     = 0              # time frame starts to show
+        self.frame_delay = int(1000/FPS)  # milliseconds duration to show frame
         # audio
         if os.path.isfile(TMP_AUDIO_FILE):
-            sound_manager.play(TMP_AUDIO_FILE)
+            sound_manager.play(TMP_AUDIO_FILE, 800)
         # and tell when to stop it
         self.video_stop  = False
         # optional pixelate effect
