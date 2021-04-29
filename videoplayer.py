@@ -13,7 +13,7 @@ TMP_AUDIO_FILE   = '/tmp/retrotrivia_audio.wav'
 #######################################
 ### Video to PyGame converter
 class VideoSprite(pygame.sprite.Sprite):
-    def __init__(self, rect, filename, sound_manager, mode, FPS=30):
+    def __init__(self, rect, filename, sound_manager, mode, FPS=20):
         pygame.sprite.Sprite.__init__(self)
         commandvideo = [ FFMPEG_BIN,
                 '-loglevel', 'quiet', '-nostdin',
@@ -66,6 +66,7 @@ class VideoSprite(pygame.sprite.Sprite):
                 try:
                     raw_image = self.procvideo.stdout.read(self.bytes_per_frame)
                     img_temp = pygame.image.frombuffer(raw_image, (self.rect.width, self.rect.height), 'RGB')
+                    self.last_image = img_temp
                     if self.mode == "pixelated":
                         # timer in second: don't pixellate if < 3 sec left
                         if timer > 3:
@@ -80,9 +81,28 @@ class VideoSprite(pygame.sprite.Sprite):
                         self.image = pygame.transform.scale(self.image, (self.rect.width, self.rect.height)).convert_alpha()
                         self.rect = self.image.get_rect()
                         self.rect.center = (x,y)
+                    elif self.mode == "zoom":
+                        (x, y) = self.rect.center
+                        ttime = (time_now-self.time_start)/1000 # milliseconds elapsed
+                        htime = ttime
+                        if ttime > tmax:
+                            htime = tmax
+                        hx = max (0, x*(1-htime/tmax))
+                        hy = max (0, y*(1-htime/tmax))
+                        rct = pygame.Rect(hx, hy, self.rect.width*htime/tmax, self.rect.height*htime/tmax)
+                        self.image = img_temp.subsurface(rct)
+                        self.image = pygame.transform.scale(self.image, (self.rect.width, self.rect.height)).convert_alpha()
+                        self.rect = self.image.get_rect()
+                        self.rect.center = (x,y)
                     else:
                         self.image = img_temp
-                    # self.proc.stdout.flush()  # doesn't seem to be necessary
-                except:
+                    self.proc.stdout.flush()  # doesn't seem to be necessary
+                except Exception as e:
                     # error getting data, end of file?
-                    print ("Videoplayer: error getting data")
+                    print ("Videoplayer running: error {}".format(e))
+        else:
+            try:
+                self.image = self.last_image
+                self.proc.stdout.flush()  # doesn't seem to be necessary
+            except Exception as e:
+                print ("Videoplayer stopped: error {}".format(e))

@@ -8,9 +8,10 @@ A trivia game for retrogaming lovers.
 You will be asked questions about your retro video games, and some general retro-gaming trivia. 
 Several gaming modes ara available:
  - 200+ handcrafted trivia questions
- - video thumbnails: guess what game is shown
+ - video thumbnails: guess what game is shown, this is the easiest mode
  - pixelate: same as video thumbnails, but pixelated video (listen carefully to the audio track!)
- - rotozoom: like good old demo makers -- or after a severe hangover
+ - rotate: like good old demo makers -- or after a severe hangover
+ - zoom: start with a tiny part of the screen, and then zoom out until you see the full picture
 
 Rules: you have a countdown timer for each question. You need to answer before the countdown times out. Let's say you give your answer with 5 seconds left on the timer: if your answer is correct, you score 5 points, if not, you lose 5 points. Be fast, be bold: you won't go below 0 on your score.
 

@@ -1,6 +1,6 @@
 # Simple Quiz Game Engine in PyGame
 # for Batocera Retrotrivia
-# lbrpdx - 2020
+# lbrpdx - 2020/2021
 # https://github.com/lbrpdx/retrotrivia
 # License: LGPL 3.0
 Q = [
@@ -98,7 +98,7 @@ Q = [
         ('In "Metal Gear", Solid and Liquid Snake were born as a result of which secret operation?', 1, 'Les Enfants Terribles', 'Les Miserables', 'Guernica', 'The Beauty and the Beast'),
         ('Who steals all the bananas in "Donkey Kong Country"?', 4, 'Tiki Tak Tribe', 'Dixie Kong', 'Kiki Koro', 'King K. Rool'),
         ('What is the final course in every "Mario Kart" game?', 1, 'Rainbow Road', 'Bowser\'s Castle', 'Choco Island', 'DK\'s Jungle'),
-        ('Which was the first Nintendo console to use optical discs?', 3, 'Super Nintendo', 'Nintendo 64', 'Gamecube', 'Wii'),
+        ('Which was the first Nintendo console to use optical discs instead of cartridges?', 3, 'Super Nintendo', 'Nintendo 64', 'Gamecube', 'Wii'),
         ('Which video game series has "Underground", "Most Wanted" and "Hot Pursuit" installments?', 4, 'Call of Duty', 'Burnout', 'Medal of Honor', 'Need for Speed'),
         ('Before being known as a plumber, Mario originally was a:', 2, 'Fireman', 'Carpenter', 'Waiter', 'Butcher'),
         ('"Myst", the adventure puzzle game, was designed by two brothers:', 4, 'Larry and Andy Wachowski', 'Jake and Elwood Blues', 'Matt and Ross Duffer', 'Robyn and Rand Miller'),
@@ -154,18 +154,18 @@ Q = [
         ('Originally, when playing multi-player Doom on MS-DOS, which network protocol was used?', 4, 'TCP', 'UDP', 'RTP', 'IPX'),
         ('The first game Hideo Kojima worked on was:', 2, 'Metal Gear on NES', 'Penguin Adventure on MSX', 'Contra on NES', 'Knightmare on MSX'),
         ('In 1993, the Mega PC was a standard Intel 386 PC with a Sega Megadrive / Genesis bundled in it. Who manufactured it?', 3, 'Toshiba', 'Gateway 2000', 'Amstrad', 'Dell'),
-	('Shigeru Miyamoto is known for his work with what company?', 3, 'Sega', 'Sony', 'Nintendo', 'Atari' ),
-	('What is the best selling video game console with over 155 million units sold?', 2, 'Xbox 360', 'Playstation 2', 'Nintendo DS family', 'Playstation 1' ),
-	('Commonly called "the blue shell" in Mario Kart games; the real name is the:', 4, 'Killer shell', 'Death shell', 'First Place shell', 'Spiney shell' ),
-	('What video game publisher for the Sega Genesis had cartridges with yellow tabs on them?', 3, 'Taito', 'Sega', 'Electronic Arts', 'Namco'),
-	('In 1995 Nintendo released a console that was a poor attempt at virtual reality called:', 4, 'Virtual Goggles', 'Virtual Bot', 'Nintendo 3D', 'Virtual Boy' ),
-	('The PC Engine SuperGrafx released at the end of 1989 got how many exclusive games in total?', 2, '2', '7', '45', '306' ),
-	('In an attempt at combining a cell phone and a portable gaming console, the N-Gage was produced by what company?', 3, 'Samsung', 'Nostalgia Electrics', 'Nokia', 'Neo-Geo' ),
-	('Atari released a home gaming console named after what big cat?', 1, 'Jaguar', 'Panther', 'Tiger', 'Maine Coon' ),
-	('In early 2020 Atari announced that they are entering into "Game Themed":', 3, 'Grocery Stores', 'Theme Parks', 'Hotels', 'Casinos' ),
-	('The handheld console called the Lynx was released by who?', 1, 'Atari', 'Sony', 'Nintendo', 'Sega' ),
-	('After its arcade debut, Crazy Taxi was first released on what system?', 3, 'Gamecube', 'Playstation 2', 'Dreamcast', 'Windows' ),
-	('The second version of the hit game Crazy Taxi was named:', 1, 'Crazy Taxi 2', 'Super Crazy Taxi', 'Crazy Taxi: New York City', 'Crazier Taxi' ),
+        ('Shigeru Miyamoto is known for his work with what company?', 3, 'Sega', 'Sony', 'Nintendo', 'Atari' ),
+        ('What is the best selling video game console with over 155 million units sold?', 2, 'Xbox 360', 'Playstation 2', 'Nintendo DS family', 'Playstation 1' ),
+        ('Commonly called "the blue shell" in Mario Kart games; the real name is the:', 4, 'Killer shell', 'Death shell', 'First Place shell', 'Spiney shell' ),
+        ('What video game publisher for the Sega Genesis had cartridges with yellow tabs on them?', 3, 'Taito', 'Sega', 'Electronic Arts', 'Namco'),
+        ('In 1995 Nintendo released a console that was a poor attempt at virtual reality called:', 4, 'Virtual Goggles', 'Virtual Bot', 'Nintendo 3D', 'Virtual Boy' ),
+        ('The PC Engine SuperGrafx released at the end of 1989 got how many exclusive games in total?', 2, '2', '7', '45', '306' ),
+        ('In an attempt at combining a cell phone and a portable gaming console, the N-Gage was produced by what company?', 3, 'Samsung', 'Nostalgia Electrics', 'Nokia', 'Neo-Geo' ),
+        ('Atari released a home gaming console named after what big cat?', 1, 'Jaguar', 'Panther', 'Tiger', 'Maine Coon' ),
+        ('In early 2020 Atari announced that they are entering into "Game Themed":', 3, 'Grocery Stores', 'Theme Parks', 'Hotels', 'Casinos' ),
+        ('The handheld console called the Lynx was released by who?', 1, 'Atari', 'Sony', 'Nintendo', 'Sega' ),
+        ('After its arcade debut, Crazy Taxi was first released on what system?', 3, 'Gamecube', 'Playstation 2', 'Dreamcast', 'Windows' ),
+        ('The second version of the hit game Crazy Taxi was named:', 1, 'Crazy Taxi 2', 'Super Crazy Taxi', 'Crazy Taxi: New York City', 'Crazier Taxi' ),
         ('Who was *not* one of the first 3 original starter Pokemons?', 3, 'Balbusaur', 'Charmander', 'Pikachu', 'Squirtle'),
         ('What is the main color of Spyro the Dragon?', 4, 'Green', 'Yellow', 'Red', 'Purple'),
         ('What year was released the Super Nintendo Entertainment System in Japan?', 1, '1990', '1991', '1992', '1993'),
@@ -208,5 +208,9 @@ Q = [
         ('In the english version of the game "Phantasy Star" for the master system, what is the name of the character unable to use magic in battle?', 3, 'Alis', 'Myau', 'Odin', 'Noah'),
         ('Where is the key of the African Mines hidden in the NES game DuckTales', 1, 'Transylvania', 'The Moon', 'The Amazon', 'The Himalayas'),
         ('In the video game "Ys - the vanished omens" for the Master system, which action triggers the ending scene?', 2, 'Equiping a sword', 'Reading a book', 'Defeating the final boss', 'Talking to a character'),
+        ('In what year was Nintendo founded?', 2, '1909', '1889', '1929', '1949'),
+        ('Rick Dangerous is armed with a gun, some dynamite but also a...', 3, 'banana', 'boomerang', 'pogo-stick', 'hula hoop'),
+        ('"All your base are belong to us" is a famous (broken) sentence from which game?', 4, 'Panzer Dragoon', 'Starblade', 'Hellfire', 'Zero Wing'),
+        ('Which game was originally released as "Hitler\'s Resurrection: Top Secret" in Japan?', 1, 'Bionic Commando', 'Contra', 'Strider', 'Metal Slug'),
 #        ('', 4, '', '', '', ''),
      ]
