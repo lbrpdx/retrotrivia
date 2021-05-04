@@ -138,18 +138,6 @@ class SoundManager:
                 thr.start()
 
 #########################################
-## Check if a process is running (pad2key conflicts with joypad)
-def is_ps_running (pname):
-    for proc in psutil.process_iter():
-        try:
-            # Check if process name contains the given name string.
-            if pname.lower() in proc.name().lower():
-                return True
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            pass
-    return False;
-
-#########################################
 ## log messages to stdout
 def log(message):
     global DEBUG
@@ -158,25 +146,10 @@ def log(message):
         LOGGER.debug(message)
 
 #########################################
-## Don't double count the same button, or BT events
-def key_last_update():
-    time_now = pygame.time.get_ticks()
-    try:
-        PADS_LAST_AT[id]
-    except:
-        PADS_LAST_AT[id] = 0
-    if (time_now > PADS_LAST_AT[id] + 100): # 100ms - don't double detect joypad events
-            PADS_LAST_AT[id] = time_now
-            return True
-    else:
-            log("key_pressed timeout on {}".format(id))
-            return False
-
-#########################################
 ## Joystick/pad/keyboard events
 def key_pressed(event, joypads):
     global DEBUG
-    if event.type == pygame.KEYDOWN:
+    if (event.type == pygame.KEYDOWN and joypads == None):
         log ("Keyboard event: {}".format(event.key))
         # Always player 1 for keyboard
         if event.key == pygame.K_UP:
@@ -196,8 +169,6 @@ def key_pressed(event, joypads):
             continue
         id = joypad.get_instance_id()
         if event.type == pygame.JOYAXISMOTION:  # Analogue Hat
-            if not key_last_update:
-                return (-1, -1)
             try:
                 if joypad.get_axis(1) <= -1:
                     log("Joypad {}: axis {} up".format(id, joypad.get_axis(1)))
@@ -214,8 +185,6 @@ def key_pressed(event, joypads):
             except Exception as e:
                     log("Joypad {} error: {}".format(id, e))
         elif event.type == pygame.JOYHATMOTION:  # Digital Hat
-            if not key_last_update:
-                return (-1, -1)
             try:
                 log("Joypad {}: hat {}".format(id, joypad.get_hat(0)))
                 if joypad.get_hat(0) == (0,1):
@@ -229,8 +198,6 @@ def key_pressed(event, joypads):
             except Exception as e:
                     log("Joypad {} error: {}".format(id, e))
         elif event.type == pygame.JOYBUTTONDOWN:
-            if not key_last_update:
-                return (-1, -1)
             if DEBUG > 0:
                 for k in range (joypad.get_numbuttons()):
                     if joypad.get_button(k):
@@ -998,8 +965,6 @@ def main():
     pygame.joystick.init()
     njoy = pygame.joystick.get_count()
     log("Number of joysticks found: {}".format(njoy))
-    # Pad2key detection not needed any more with Py3 / Batocera 31
-    # pad2key = is_ps_running ('evmapy')
     for i in range(njoy):
         JOYSTICKS[i] = pygame.joystick.Joystick(i)
         JOYSTICKS[i].init()

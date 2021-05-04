@@ -175,7 +175,7 @@ Q = [
         ('Nintendo\'s Mario debuted in what video game?', 4, 'Super Mario Brothers', 'Elevator Action', 'Duck Hunt', 'Donkey Kong'),
         ('What Japanese Nintendo game was edited and rebranded into Super Mario Bros 2?', 2, 'Chuugoku Janshi Story: Tonpuu', 'Yume Kojo: Doki Doki Panic', 'Yie Ar Kung Fu', 'Square no Tom Sawyer'),
         ('The first game in the Mario Kart series came out on what console?', 1, 'Super Nintendo', 'Nintendo Entertainment System', 'Game Boy Color', 'Nintendo 64'),
-        ('Your name is Agent 17, codenamed: "Otto"; what game are you from?', 2, 'Goldeneye 007', 'Elevator Action', 'Astro Warrior', 'Blast Corps'),
+        ('Your name is Agent 17, codenamed "Otto". What game are you from?', 2, 'Goldeneye 007', 'Elevator Action', 'Astro Warrior', 'Blast Corps'),
         ('The "R.C." from R.C. Pro-Am stands for?', 4, 'Rally Car', 'Retro Car', 'Ren Carmichael', 'Radio-Controlled'),
         ('What NES game was Tengen court ordered to pull from shelves and destroy all remaning copies of?', 3, 'Pac-Man', 'Astroids', 'Tetris', 'Donkey Kong'),
         ('How many sports could you play on Wii Sports?', 3, '3', '4', '5', '6'),
