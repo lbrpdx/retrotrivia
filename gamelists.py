@@ -1,6 +1,6 @@
 # Simple Quiz Game Engine in PyGame
 # for Batocera Retrotrivia
-# lbrpdx - 2020
+# lbrpdx - 2020/2021
 # https://github.com/lbrpdx/retrotrivia
 # License: LGPL 3.0
 import xml.etree.ElementTree as ET
@@ -11,7 +11,7 @@ BASEPATH  = '/userdata/roms/'
 XML       = '/gamelist.xml'
 MIN_GAMES = 10   # Don't index if fewer than this
 MAX_GAMES = 5000 # Don't index full sets
-SYSTEMS   = [  '3do', '3ds', 'amiga1200', 'amiga500', 'amigacd32', 'amigacdtv', 'amstradcpc', 'apple2', 'atari2600', 'atari5200', 'atari7800', 'atari800', 'atarist', 'atomiswave', 'c128', 'c20', 'c64', 'channelf', 'colecovision', 'daphne', 'dos', 'dreamcast', 'fbneo', 'fds', 'gameandwatch', 'gamecube', 'gamegear', 'gb', 'gba', 'gbc', 'gx4000', 'intellivision', 'jaguar', 'lynx', 'mame', 'mastersystem', 'megadrive', 'msx', 'msx1', 'msx2', 'msx2+', 'n64', 'naomi', 'nds', 'neogeo', 'neogeocd', 'nes', 'ngp', 'ngpc', 'o2em', 'openbor', 'pc88', 'pc98', 'pcengine', 'pcenginecd', 'pcfx', 'pico8', 'pokemini', 'ports', 'prboom', 'ps2', 'ps3', 'psp', 'psx', 'satellaview', 'saturn', 'scummvm', 'sega32x', 'segacd', 'sg1000', 'snes', 'sufami', 'supergrafx', 'thomson', 'tic80', 'vectrex', 'virtualboy', 'wii', 'wiiu', 'windows', 'wswan', 'wswanc', 'x1', 'x68000', 'zx81', 'zxspectrum' ]
+SYSTEMS   = [  '3do', '3ds', 'amiga1200', 'amiga500', 'amigacd32', 'amigacdtv', 'amstradcpc', 'apple2', 'atari2600', 'atari5200', 'atari7800', 'atari800', 'atarist', 'atomiswave', 'c128', 'c20', 'c64', 'channelf', 'colecovision', 'daphne', 'dos', 'dreamcast', 'easyrpg', 'fbneo', 'fds', 'flash', 'fmtowns', 'fpinball', 'gameandwatch', 'gamecube', 'gamegear', 'gb', 'gba', 'gbc', 'gx4000', 'intellivision', 'jaguar', 'lutro', 'lynx', 'mame', 'mastersystem', 'megadrive', 'model3', 'msx', 'msx1', 'msx2', 'msx2+', 'msxturbor', 'mugen', 'n64', 'naomi', 'nds', 'neogeo', 'neogeocd', 'nes', 'ngp', 'ngpc', 'o2em', 'openbor', 'pc88', 'pc98', 'pcengine', 'pcenginecd', 'pcfx', 'pico8', 'pokemini', 'ports', 'prboom', 'ps2', 'ps3', 'psp', 'psx', 'satellaview', 'saturn', 'scummvm', 'sega32x', 'segacd', 'sg1000', 'snes', 'solarus', 'sufami', 'supervision', 'supergrafx', 'thomson', 'tic80', 'vectrex', 'virtualboy', 'wii', 'wiiu', 'windows', 'wswan', 'wswanc', 'x1', 'xbox', 'x68000', 'zx81', 'zxspectrum' ]
 
 class gamelist:
     def __init__(self):
@@ -22,7 +22,11 @@ class gamelist:
         q = []
         if not os.path.isfile(BASEPATH+system+XML):
             return q
-        self.tree = ET.parse(BASEPATH+system+XML)
+        try:
+            self.tree = ET.parse(BASEPATH+system+XML)
+        except Exception as e:
+            print("Warning: unable to load {}/gamelist.xml".format(system))
+            return q
         root = self.tree.getroot()
         setgames = set()
         for item in root.findall('game/name'):

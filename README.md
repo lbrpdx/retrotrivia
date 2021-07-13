@@ -7,7 +7,7 @@ A trivia game for retrogaming lovers.
 
 You will be asked questions about your retro video games, and some general retro-gaming trivia. 
 Several gaming modes ara available:
- - 200+ handcrafted trivia questions
+ - 210+ handcrafted trivia questions
  - video thumbnails: guess what game is shown, this is the easiest mode
  - pixelate: same as video thumbnails, but pixelated video (listen carefully to the audio track!)
  - rotate: like good old demo makers -- or after a severe hangover

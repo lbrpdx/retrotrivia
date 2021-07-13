@@ -212,5 +212,8 @@ Q = [
         ('Rick Dangerous is armed with a gun, some dynamite but also a...', 3, 'banana', 'boomerang', 'pogo-stick', 'hula hoop'),
         ('"All your base are belong to us" is a famous (broken) sentence from which game?', 4, 'Panzer Dragoon', 'Starblade', 'Hellfire', 'Zero Wing'),
         ('Which game was originally released as "Hitler\'s Resurrection: Top Secret" in Japan?', 1, 'Bionic Commando', 'Contra', 'Strider', 'Metal Slug'),
+        ('What sport is featured in the video game franchise "Final Night"?', 4, 'Wrestling', 'American football', 'Baseball', 'Boxing'),
+        ('The Japanse NES game "Captain Tsubasa" was released as "Tecmo Cup Soccer/Football Game" in America and Europe. Its main character was also renamed as:', 2, 'Mike Robertson', 'Robin Field', 'Leo Berlino', 'Jeff Fighter'),
+        ('When was the very first edition of "Call of Duty" released?', 3, '2001', '2002', '2003', '2004'),
 #        ('', 4, '', '', '', ''),
      ]
