@@ -269,7 +269,7 @@ class QuestionBank:
                 self.loaded_pcent = int(100*i/len(gl.systems))
                 log("Loaded system {} with {} games.".format(sys, len(loaded_sys)))
         self.loaded += len (self.videobank)
-        log("Total questions loaded: {} trivia, {} videos".format(len(self.triviabank), self.loaded))
+        log("Total questions loaded: {} trivia, {} questions including videos".format(len(self.triviabank), self.loaded))
 
     def initialize_Q(self):
         thr = threading.Thread(target=self.load_all, args=())
