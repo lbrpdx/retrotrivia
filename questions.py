@@ -90,7 +90,7 @@ Q = [
         ('How many buttons does the Atari 2600 controller have?', 1, '1', '2', '3', '4'),
         ('What is the name of the alien alliance in the first "Halo" games?', 4, 'The Horde', 'The Chozo', 'The Perdition', 'The Covenant'),
         ('What is the name of the woman to be saved by Mario in the original Donkey Kong game?', 4, 'Camilla', 'Peach', 'Rosalina', 'Pauline'),
-        ('What item makes Matio invincible in the original "Super Mario Bros"?', 3, 'Mushroom', 'Flower', 'Starman', 'Yoshi Egg'),
+        ('What item makes Mario invincible in the original "Super Mario Bros"?', 3, 'Mushroom', 'Flower', 'Starman', 'Yoshi Egg'),
         ('What is the name of the star system where "Star Fox" takes place?', 3, 'Arrakis', 'Caladan', 'Lylat', 'Sera'),
         ('What game officially featured Michael Jackson as the hero?', 2, 'Thriller', 'Moonwalker', 'Space Channel 5', 'Dance Dance Revolution'),
         ('What was the name of the peripheral device adding vibration to the Nintendo 64 controller?', 3, 'Vibratron', 'Visual Memory Unit', 'Rumble Pak', 'Haptic 64'),
