@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Simple Quiz Game Engine in PyGame
 # for Batocera Retrotrivia
-# lbrpdx - 2020/2021
+# lbrpdx - 2020-2026
 # https://github.com/lbrpdx/retrotrivia
 # License: LGPL 3.0
 import pygame
@@ -20,7 +20,7 @@ import threading
 
 #######################################
 ### Global parameters
-DEBUG            = 1
+DEBUG            = 0
 TIMER            = 30  # seconds to respond
 NUMBER_Q         = 10  # number of questions to ask
 PLAYERS          = 1   # default nb of players
@@ -52,54 +52,69 @@ AUDIO_BUFFER     = 4096
 VIDEO_EXTENSIONS = [ '.mp4', '.mkv', '.avi', '.m4v' ]
 PADS_LAST_AT     = {}
 
+
 #######################################
-###  wrap/render text on a surface
-class DrawText:
-    circle_cache = {}
+class RenderedText:
+    def __init__(self, text, color, halo_color, rect, thickness=4, offset=0):
+        self.text = self._clean_text(text)
+        self.rect = rect
+        # Increased default thickness for better visibility
+        self.surface = self._render(FONT, color, halo_color, thickness, offset)
 
-    def up(self, text):
-        try:
-            text = unicode(text, 'utf-8')
-        except: # Python 2+3 compatibility
-            pass
-        text = unicodedata.normalize('NFD', text).encode('ascii', 'ignore').decode("utf-8")
-        return str(text.upper())
+    def _clean_text(self, text):
+        if isinstance(text, bytes):
+            text = text.decode("utf-8")
+        return unicodedata.normalize('NFD', text).encode('ascii', 'ignore').decode("utf-8").upper()
 
-    def __init__(self, surface, text, color, halo_color, rect, yoffset=0, lineSpacing=1, defopx=5):
-        opx = defopx*SCREEN.get_height()//1080
-        text = (self.up(text)).split('\n')
-        rendtext = FONT.render("TgM") # Sample text to render
-        fontHeight = int(rendtext[1][3])
-        y = rect.top + fontHeight * yoffset
-        for line in text:
-            while line:
-                i = 1
-                # determine if the row of text will be outside our Rect area
-                if y + fontHeight > rect.bottom:
-                    break
-                # determine maximum width of line
-                while (FONT.render(line[:i])[1][2] < rect.width) and (i < len(line)):
-                    i += 1
-                # if we wrap the line, then adjust to the last word
-                if i < len(line):
-                    i = line.rfind(" ", 0, i) + 1
-                # render the line and blit it to the surface
-                image = FONT.render(line[:i], color)
-                itxt = image[0].convert_alpha()
-                w = itxt.get_width() + 2 * opx
-                h = fontHeight + 2 * opx
-                osurf = pygame.Surface((w, h)).convert_alpha()
-                osurf.fill((0, 0, 0, 0))
-                surf = osurf.copy()
-                osurf.blit(FONT.render(line[:i], halo_color)[0].convert_alpha(), (0, 0))
-                for dx, dy in circlepoints(opx, self.circle_cache):
-                    surf.blit(osurf, (dx + opx, dy + opx))
-                surf.blit(itxt, (opx, opx))
-                surface.blit(surf, (rect.left, y))
-                y += int(fontHeight *(1 + 0.2* lineSpacing))
-                # remove the text we just blitted
-                line = line[i:]
-        return # line contains remaining text
+    def _render(self, font, color, halo_color, thickness, offset):
+        # Handle word wrapping
+        processed_text = self.text.replace('\\n', '\n')
+        paragraphs = processed_text.split('\n')
+        lines = []
+        
+        for p in paragraphs:
+            if p == "":
+                lines.append("")
+                continue
+
+            words = p.split(' ')
+            cur = ""
+            for w in words:
+                # Calculate width of the line if we add this word
+                test_line = cur + w + " "
+                if font.get_rect(test_line).width < self.rect.width:
+                    cur = test_line
+                else:
+                    lines.append(cur)
+                    cur = w + " "
+            lines.append(cur)
+
+        # Setup surface dimensions
+        offs = offset * int (SCREEN.get_height()/1080)
+        line_height = int(font.get_rect("TgM").height * 1.3)
+        total_h = len(lines) * line_height + (thickness * 2) + offs
+        final_surf = pygame.Surface((self.rect.width, total_h), pygame.SRCALPHA).convert_alpha()
+
+        for i, line in enumerate(lines):
+            # If it's a blank line, we just move the cursor (i)
+            # and don't render anything, creating the "skip" effect.
+            if line == "" or line.isspace():
+                continue
+            txt_surf, _ = font.render(line, color)
+            halo_surf, _ = font.render(line, halo_color)
+            
+            y_off = offs + i * line_height + thickness
+            
+            for dx in range(-thickness, thickness + 1):
+                for dy in range(-thickness, thickness + 1):
+                    # Skip the corners slightly to keep it rounded, or keep all for a boxy stroke
+                    if dx*dx + dy*dy <= thickness*thickness:
+                        final_surf.blit(halo_surf, (thickness + dx, y_off + dy))
+            
+            # Draw the main text over the halo
+            final_surf.blit(txt_surf, (thickness, y_off))
+            
+        return final_surf
 
 #########################################
 ## Manage sound from multiple objects (otherwise : crash)
@@ -150,7 +165,7 @@ def log(message):
 def key_pressed(event, joypads):
     global DEBUG
     if (event.type == pygame.KEYDOWN and joypads == None):
-        log ("Keyboard event: {}".format(event.key))
+        log (f"Keyboard event: {event.key}")
         # Always player 1 for keyboard
         if event.key == pygame.K_UP:
             return (0, 'up')
@@ -171,22 +186,22 @@ def key_pressed(event, joypads):
         if event.type == pygame.JOYAXISMOTION:  # Analogue Hat
             try:
                 if joypad.get_axis(1) <= -1:
-                    log("Joypad {}: axis {} up".format(id, joypad.get_axis(1)))
+                    log(f"Joypad {id}: axis {joypad.get_axis(1)} up")
                     return (id, 'up')
                 elif joypad.get_axis(0) <= -1:
-                    log("Joypad {}: axis {} left".format(id, joypad.get_axis(0)))
+                    log(f"Joypad {id}: axis {joypad.get_axis(0)} left")
                     return (id, 'left')
                 elif joypad.get_axis(0) >= 0.5:
-                    log("Joypad {}: axis {} right".format(id, joypad.get_axis(0)))
+                    log(f"Joypad {id}: axis {joypad.get_axis(0)} right")
                     return (id, 'right')
                 elif joypad.get_axis(1) >= 0.5:
-                    log("Joypad {}: axis {} down".format(id, joypad.get_axis(1)))
+                    log(f"Joypad {id}: axis {joypad.get_axis(1)} down")
                     return (id, 'down')
             except Exception as e:
-                    log("Joypad {} error: {}".format(id, e))
+                    log(f"Joypad {id} error: {e}")
         elif event.type == pygame.JOYHATMOTION:  # Digital Hat
             try:
-                log("Joypad {}: hat {}".format(id, joypad.get_hat(0)))
+                log(f"Joypad {id}: hat {joypad.get_hat(0)}")
                 if joypad.get_hat(0) == (0,1):
                     return (id, 'up')
                 elif joypad.get_hat(0) == (-1,0):
@@ -196,12 +211,12 @@ def key_pressed(event, joypads):
                 elif joypad.get_hat(0) == (0,-1):
                     return (id, 'down')
             except Exception as e:
-                    log("Joypad {} error: {}".format(id, e))
+                    log(f"Joypad {id} error: {e}")
         elif event.type == pygame.JOYBUTTONDOWN:
             if DEBUG > 0:
                 for k in range (joypad.get_numbuttons()):
                     if joypad.get_button(k):
-                        log ("Joypad {}: button {}".format(id,k))
+                        log (f"Joypad {id}: button {k}")
             try:
                 if joypad.get_button(0):  # Buttons A or B
                     return (id, 'action')
@@ -228,7 +243,7 @@ def key_pressed(event, joypads):
                 elif joypad.get_button(3):  # Buttons A or B
                     return (id, 'action')
             except Exception as e:
-                    log("Joypad {} error: {}".format(id, e))
+                    log(f"Joypad {id} error: {e}")
     return (-1, -1) # No event
 
 ######################################
@@ -267,9 +282,9 @@ class QuestionBank:
                 self.videobank += loaded_sys[:]
                 i += 1
                 self.loaded_pcent = int(100*i/len(gl.systems))
-                log("Loaded system {} with {} games.".format(sys, len(loaded_sys)))
+                log(f"Loaded system {sys} with {len(loaded_sys)} games.")
         self.loaded += len (self.videobank)
-        log("Total questions loaded: {} trivia, {} questions including videos".format(len(self.triviabank), self.loaded))
+        log(f"Total questions loaded: {len(self.triviabank)} trivia, {self.loaded} questions including videos")
 
     def initialize_Q(self):
         thr = threading.Thread(target=self.load_all, args=())
@@ -310,10 +325,9 @@ class GameState:
         if self.QB.gamemode[self.current_mode] == 0:
             self.current_mode = 1 # Force trivia (even if not selected, because nothing else)
         self.numq += 1
-        log("Question {} mode {}: ({})".format(str(self.numq), str(self.current_mode), GAMEMODES_NAMES[self.current_mode]))
+        log(f"Question {str(self.numq)} mode {str(self.current_mode)}: ({GAMEMODES_NAMES[self.current_mode]})")
         # Video (normal, pixelated, rotated or zoomed)
-        if self.current_mode == 0 or self.current_mode == 2\
-                                  or self.current_mode == 3 or self.current_mode == 4:
+        if self.current_mode in [ 0, 2, 3, 4 ]:
                 try:
                     q = random.choice(self.questionsv)
                     self.questionsv.remove(q)
@@ -324,7 +338,7 @@ class GameState:
             q = random.choice(self.questionst)
             self.questionst.remove(q)
         self.current_question = q
-        log("Question: {}".format(str(q)))
+        log(f"Question: {str(q)}")
         return q
 
     def get_answer(self, vinput, timerpl):
@@ -335,14 +349,14 @@ class GameState:
                 if vinput[p] == self.current_question[1]:
                     self.right[p] += 1
                     self.score[p] += timerpl[p]
-                    log ("Question {} was right at {} sec for player {}".format(self.numqansw, timerpl[p], p+1))
+                    log (f"Question {self.numqansw} was right at {timerpl[p]} sec for player {p+1}")
                     ret = True
                 else:
                     self.wrong[p] += 1
                     self.score[p] -= timerpl[p]
                     if self.score[p] < 0:
                         self.score[p] = 0 # No negative score, too depressing
-                    log ("Question {} was wrong at {} sec for player {}".format(self.numqansw, timerpl[p], p+1))
+                    log (f"Question {self.numqansw} was wrong at {timerpl[p]} sec for player {p+1}")
             return ret
 
     def get_result(self):
@@ -350,8 +364,8 @@ class GameState:
         res = ""
         if self.QB.players > 1:
             for p in range(self.QB.players):
-                res += "Player {}: {} points\n".format(p+1,self.score[p])
-                res += "  ({} right, {} wrong answers)\n".format(self.right[p],self.wrong[p])
+                res += f"Player {p+1}: {self.score[p]} points\n"
+                res += f"  ({self.right[p]} right, {self.wrong[p]} wrong answers)\n"
             res += "\n \nPlayer 1, press [A] to continue"
             return res
         else:
@@ -363,12 +377,12 @@ class GameState:
                 tagline="YOU CAN DO BETTER NEXT TIME.\n "
             else:
                 tagline="OK, WE WON'T JUDGE YOU...\n"
-            tright = '\n{} answers were correct\n'.format(self.right[0]) if self.right[0]>1 \
-                else '\nhuh, {} answer was correct\n'.format(self.right[0])
-            twrong = '{} answers were wrong'.format(self.wrong[0]) if self.wrong[0]>1 \
-                else 'and, wow, {} answer was wrong'.format(self.wrong[0])
-            return 'FINAL SCORE: {}\n'.format(self.score[0])+tagline+tright+twrong \
-                          +'\n \nPress [A] to continue'
+            tright = f"\n{self.right[0]} answers were correct\n" if self.right[0]>1 \
+                else f"\nhuh, {self.right[0]} answer was correct\n"
+            twrong = f"{self.wrong[0]} answers were wrong" if self.wrong[0]>1 \
+                else f"and, wow, {self.wrong[0]} answer was wrong"
+            return f"\n \nFINAL SCORE: {self.score[0]}\n" + tagline \
+                + tright +twrong + "\n \nPress [A] to continue"
 
 
 #######################################
@@ -383,6 +397,10 @@ class StaticScreen:
         self.img = img if img else None
         self.additional_text = text if text else None
         self.next_scene = next_scene
+        self.txt_rendered = []
+        self.text_rect = pygame.Rect(SCREEN.get_width()//2.5, SCREEN.get_height()//3,
+                                     SCREEN.get_width()//3, SCREEN.get_height()//3 )
+        self.loading_text_obj = RenderedText(text, TEXT_COLOR, TEXT_HALO, self.text_rect)
 
     def start(self, text):
         opx = 5*SCREEN.get_height()//1080
@@ -414,17 +432,26 @@ class StaticScreen:
         self.draw()
 
     def additional(self, text):
-        self.additional_text = text
+        self.loading_text_obj = RenderedText(
+            text,
+            TEXT_COLOR,
+            TEXT_HALO,
+            self.text_rect
+        )
 
     def draw(self):
         SCREEN.blit(self.background, (0, 0))
+        for i, rendered in enumerate(self.txt_rendered):
+            SCREEN.blit(rendered.surface, (rendered.rect.x, rendered.rect.y))
+        SCREEN.blit(self.loading_text_obj.surface,
+                    (self.loading_text_obj.rect.x, self.loading_text_obj.rect.y))
+
+    def update(self, events, dt):
         if self.additional_text:
             p_surface=pygame.Rect(SCREEN.get_width()*0.375, SCREEN.get_height()*0.3,\
                       SCREEN.get_width()/2, SCREEN.get_height()/2)
-            DrawText(self.background, self.additional_text, TEXT_COLOR, TEXT_HALO_MENU, p_surface, 3, 2, defopx=8)
+            self.txt_rendered.append(RenderedText(self.additional_text, TEXT_COLOR, TEXT_HALO_MENU, p_surface, 1, 20))
             self.additional_text = None
-
-    def update(self, events, dt):
         for event in events:
             if key_pressed (event, [JOYSTICKS[0]]) == (0, 'action'):
                 return (self.next_scene, None)
@@ -491,6 +518,7 @@ class SettingsScreen:
         self.back_img = self.static_bkg_img.copy()
         SCREEN.blit(self.background, (0, 0))
         self.background.blit(self.static_bkg_img, (0, 0))
+        self.txt_rendered = []
 
     def start(self, *args):
         self.back_img = self.static_bkg_img.copy()
@@ -498,20 +526,21 @@ class SettingsScreen:
         self.background.blit(self.back_img, (0, 0))
         p_surface=pygame.Rect(SCREEN.get_width()*3/8, SCREEN.get_height()/100,\
                   SCREEN.get_width()/3, SCREEN.get_height()/10)
-        DrawText(self.background, 'SETTINGS', TEXT_COLOR, TEXT_HALO_MENU, p_surface, 1, 1)
+        self.txt_rendered.append(RenderedText('SETTINGS', TEXT_COLOR, TEXT_HALO_MENU, p_surface, 4, 30))
         p_surface2=pygame.Rect(SCREEN.get_width()*3/8, SCREEN.get_height()*8/10,\
                   SCREEN.get_width()/3, SCREEN.get_height()/10)
-        DrawText(self.background, '[HOTKEY]+[START] TO QUIT', TEXT_COLOR, TEXT_HALO_MENU, p_surface2, 1, 1)
+        self.txt_rendered.append(RenderedText('[HOTKEY]+[START] TO QUIT', TEXT_COLOR, TEXT_HALO_MENU, p_surface2, 4, 50))
         n = 0
         for rect in self.rects_val:
-            DrawText(self.background, self.settings[n], TEXT_COLOR, TEXT_HALO_MENU, self.rects_set[n], 1, 1)
+            self.txt_rendered.append(RenderedText(self.settings[n], TEXT_COLOR, TEXT_HALO_MENU, self.rects_set[n], 4, 30))
             n += 1
-        DrawText(self.background, self.settings[n], TEXT_COLOR, TEXT_HALO_MENU, self.rects_gmodes, 1, 1)
         for i in range(len(self.rects_gmode)):
-            DrawText(self.background, GAMEMODES_NAMES[i], TEXT_COLOR, TEXT_HALO_MENU, self.rects_gmode[i], 1, 1)
+            self.txt_rendered.append(RenderedText(GAMEMODES_NAMES[i], TEXT_COLOR, TEXT_HALO_MENU, self.rects_gmode[i], 4, 30))
 
     def draw(self):
         SCREEN.blit(self.background, (0, 0))
+        for i, rendered in enumerate(self.txt_rendered):
+            SCREEN.blit(rendered.surface, (rendered.rect.x, rendered.rect.y))
         n = 0
         for rect in self.rects_val:
             color = BOX_COLOR if (n == self.ysel and self.xsel == 0) else TEXT_HALO_MENU
@@ -520,7 +549,7 @@ class SettingsScreen:
             subsurface = self.static_bkg_img.subsurface(self.rects_val[n])
             self.background.blit(subsurface, (self.rects_val[n].x, self.rects_val[n].y))
             rct = pygame.Rect(self.rects_val[n].x+self.square/10, self.rects_val[n].y+self.square/3, self.square, self.square)
-            DrawText(self.background, str(self.settings_val[n]), TEXT_COLOR, TEXT_HALO_MENU, rct)
+            self.txt_rendered.append(RenderedText(str(self.settings_val[n]), TEXT_COLOR, TEXT_HALO_MENU, rct))
             self.background.blit(self.up_down[0], (self.rects_up[n].x,self.rects_up[n].y))
             color = BOX_COLOR if (n == self.ysel and self.xsel == 1) else TEXT_HALO_MENU
             pygame.draw.rect(self.background, pygame.Color(color), self.rects_up[n], int(BOX_WIDTH*SCREEN.get_height() / 1080), border_radius=self.square//4)
@@ -543,12 +572,12 @@ class SettingsScreen:
         color = BOX_COLOR if (6 == self.ysel and self.xsel == 0) else TEXT_HALO_MENU
         pygame.draw.rect(self.background, pygame.Color(color), self.rects_defaults, int(BOX_WIDTH*SCREEN.get_height() / 1080), border_radius=self.square//4)
         rct = pygame.Rect(self.rects_defaults.x+self.square/3, self.rects_defaults.y+self.square/3, self.square*3, self.square)
-        DrawText(self.background, 'DEFAULTS', TEXT_COLOR, TEXT_HALO_MENU, rct)
+        self.txt_rendered.append(RenderedText('DEFAULTS', TEXT_COLOR, TEXT_HALO_MENU, rct))
         color = BOX_COLOR if (6 == self.ysel and self.xsel == 1) else TEXT_HALO_MENU
         pygame.draw.rect(self.background, pygame.Color(color), self.rects_start, int(BOX_WIDTH*SCREEN.get_height() / 1080), border_radius=self.square//4)
         rct = pygame.Rect(self.rects_start.x+self.square/2, self.rects_defaults.y+self.square/3, self.square*3, self.square)
         greylevel = int(math.sin(math.radians(pygame.time.get_ticks()/5%360))*127)
-        DrawText(self.background, 'START', (32+greylevel/4, 128+greylevel, 64+greylevel/2), TEXT_HALO_MENU, rct)
+        self.txt_rendered.append(RenderedText('START', (32+greylevel/4, 128+greylevel, 64+greylevel/2), TEXT_HALO_MENU, rct))
 
     def action(self):
         if self.ysel == 0:
@@ -611,8 +640,8 @@ class SettingsScreen:
                 self.QB.sound_vol = self.settings_val[2]
                 self.QB.players   = self.settings_val[3]
                 self.QB.gamemode  = self.settings_val[4]
-                log("Number of questions: {}, timer: {}, players: {}, sound vol: {}".format(self.QB.number_q, self.QB.timer, self.QB.players, self.QB.sound_vol))
-                log("Selected gamemodes: {}".format(self.QB.gamemode))
+                log(f"Number of questions: {self.QB.number_q}, timer: {self.QB.timer}, players: {self.QB.players}, sound vol: {self.QB.sound_vol}")
+                log(f"Selected gamemodes: {self.QB.gamemode}")
                 return ('QUIZ', GameState(self.QB))
 
     def update(self, events, dt):
@@ -741,6 +770,8 @@ class QuizScreen:
             self.resps.append(resp)
         self.countdown = Timer()
         self.sound_manager = SoundManager()
+        self.reveal = False
+        self.pulse_val = 0
     log ("Initialized QuizScreen")
 
     def start(self, gamestate):
@@ -750,16 +781,17 @@ class QuizScreen:
         for n in range(5):
             self.r.append('')
         self.question, self.answer, self.r[1], self.r[2], self.r[3], self.r[4] = gamestate.pop_question()
+        self.is_video = any(self.question.lower().endswith(ext) for ext in VIDEO_EXTENSIONS)
         # Clean and draw question
         if self.vsprite_group is not None:
             if self.vsprite is not None:
                 self.vsprite_group.remove(self.vsprite)
                 self.vsprite = None
             self.vsprite_group = None
-        self.q_surface = pygame.Rect(int(self.square*2.2), int(self.square/5),\
+        self.q_surface = pygame.Rect(int(self.square*2.2), int(self.square/4),\
             int((SCREEN.get_height()/2.1+self.square*3/5)*(4/3)), int(SCREEN.get_height()/2.1+self.square*3/5))
 
-        if (self.question[-4:].rstrip()) in VIDEO_EXTENSIONS:
+        if self.is_video:
             # Surface video player
             if self.gamestate.current_mode == 2:
                 mode = "pixelated"
@@ -785,18 +817,28 @@ class QuizScreen:
         self.ready  = [ 0, 0, 0, 0 ]
         self.back_img = self.static_bkg_img.copy()
         SCREEN.blit(self.background, (0, 0))
-        if (self.question[-4:].rstrip()) not in VIDEO_EXTENSIONS:
-            DrawText(self.back_img, self.question, TEXT_COLOR, TEXT_HALO, self.q_surface, 3, 2)
-        n = 1
-        for rect in self.rects:
-            DrawText(self.back_img, self.r[n], TEXT_COLOR, TEXT_HALO, self.resps[n-1])
-            n += 1
+        self.txt_rendered = [ ]
+        if not self.is_video:
+            q_surf_text = self.q_surface
+            q_surf_text[1] = int(self.square/2)
+            self.txt_rendered.append(RenderedText(self.question, TEXT_COLOR, TEXT_HALO, q_surf_text))
         self.countdown_list = pygame.sprite.Group()
         self.countdown_list.add(self.countdown)
+        for i in range(1, 5):
+            box_rect = self.resps[i-1]
+            self.txt_rendered.append(RenderedText(self.r[i], TEXT_COLOR, TEXT_HALO, box_rect))
+        rct = pygame.Rect(int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.4), \
+                  int(SCREEN.get_width()*0.2), int(self.square//2))
+        self.txt_rendered.append(RenderedText('SCORE BOARD:', TEXT_COLOR, TEXT_HALO, rct))
+        rct = pygame.Rect((int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.05),\
+                  int(SCREEN.get_width()*0.2), int(SCREEN.get_height()*0.10)))
+        self.txt_rendered.append(RenderedText(f"QUESTION: {self.gamestate.numq}/{self.gamestate.QB.number_q}", TEXT_COLOR, TEXT_HALO, rct))
 
     def draw(self):
         self.background.blit(self.back_img, (0, 0))
         SCREEN.blit(self.background, (0, 0))
+        for i, rendered in enumerate(self.txt_rendered):
+            SCREEN.blit(rendered.surface, (rendered.rect.x, rendered.rect.y))
         n = 1
         for rect in self.rects:
             # Color boxes
@@ -818,19 +860,16 @@ class QuizScreen:
         subsurface = self.static_bkg_img.subsurface((int(SCREEN.get_width()*0.8),0,int(SCREEN.get_width()*0.2),SCREEN.get_height()*0.7))
         self.back_img.blit(subsurface, (int(SCREEN.get_width()*0.8), 0))
         # Video player (except if Trivia)
-        if (self.question[-4:].rstrip()) in VIDEO_EXTENSIONS:
+        if self.is_video:
             subsurface2 = self.static_bkg_img.subsurface(0,0,int(SCREEN.get_width()*0.8),int(SCREEN.get_height()/2.1+self.square))
             self.back_img.blit(subsurface2, (0, 0))
         all_answered = 1
         if self.reveal:
             cont_text = "Everyone, " if self.gamestate.QB.players>1 else "Player 1, "
             cont_text += "\n press [A]\n  to continue"
-            greylevel = int(math.sin(math.radians(pygame.time.get_ticks()/5%360))*127)
-            DrawText(self.back_img, cont_text, (32+greylevel/4 ,128+greylevel, 64+greylevel/2), TEXT_HALO, self.contsurf, 0, 2)
+            greylevel = self.pulse_val
+            self.txt_rendered.append(RenderedText(cont_text, (32+greylevel/4, 128+greylevel, 64+greylevel/2), TEXT_HALO, self.contsurf, 1, 20))
         scorey= int(SCREEN.get_height()*0.4)
-        rct = pygame.Rect(int(SCREEN.get_width()*0.8), scorey,\
-                  int(SCREEN.get_width()*0.2), int(self.square//2))
-        DrawText(self.back_img, 'SCORE BOARD:', TEXT_COLOR, TEXT_HALO, rct)
         for p in range(self.gamestate.QB.players):
             reponse     = pygame.Surface((0, 0))
             surfreponse = pygame.Rect(0, 0, 0, 0)
@@ -852,7 +891,7 @@ class QuizScreen:
             ready = self.small_ready if self.ready[p] else pygame.Surface((0,0))
             rct = pygame.Rect(int(SCREEN.get_width()*0.8), int(scorey+(self.square/10)),\
                   int(SCREEN.get_width()*0.2), int(self.square//2))
-            DrawText(self.back_img, "P{}: {}".format(p+1,self.gamestate.score[p]), TEXT_COLOR, TEXT_HALO, rct)
+            self.txt_rendered.append(RenderedText(f"P{p+1}: {self.gamestate.score[p]}", TEXT_COLOR, TEXT_HALO, rct))
             greylevel = int(math.sin(math.radians(pygame.time.get_ticks()/2%360))*63)
             if self.vinput[p] == self.answer:
                 reponse = colorize_icon(reponse, pygame.Color(BOX_COLOR_ANSWER))
@@ -863,10 +902,6 @@ class QuizScreen:
             pygame.draw.rect(self.back_img, small_rect_color, surfreponse, 0, border_radius=self.square//8) # 0 = fill
             self.back_img.blit(reponse, (int(SCREEN.get_width()*0.9), scorey))
             self.back_img.blit(ready, (int(SCREEN.get_width()*0.93), scorey))
-        rct = pygame.Rect((int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.05),\
-                  int(SCREEN.get_width()*0.2), int(SCREEN.get_height()*0.10)))
-        DrawText(self.back_img, 'QUESTION: {}/{}'.format(self.gamestate.numq,self.gamestate.QB.number_q),\
-                  TEXT_COLOR, TEXT_HALO, rct)
         self.countdown_list.update(int(self.passed_time/1000), self.gamestate.QB.timer)
         self.countdown_list.draw(self.back_img)
         if self.vsprite_group is not None:
@@ -874,6 +909,7 @@ class QuizScreen:
              self.vsprite_group.draw(self.back_img)
 
     def update(self, events, dt):
+        self.pulse_val = int(math.sin(math.radians(pygame.time.get_ticks()/5%360))*127)
         if self.reveal == False :
             self.passed_time = self.start_time - pygame.time.get_ticks()
             for event in events:
@@ -958,24 +994,24 @@ def main():
     pygame.mouse.set_visible(0)
     infoObject = pygame.display.Info()
     SCREEN = pygame.display.set_mode((infoObject.current_w, infoObject.current_h), WINDOW_SURFACE)
-    log("Game screen: {}x{}".format(SCREEN.get_width(), SCREEN.get_height()))
+    log(f"Game screen: {SCREEN.get_width()}x{SCREEN.get_height()}")
     pygame.font.init()
     if FONT == None:
         FONT = pygame.freetype.Font(SYS_FONT, int(FONT_SIZE*SCREEN.get_height()/1080))
     pygame.joystick.init()
     njoy = pygame.joystick.get_count()
-    log("Number of joysticks found: {}".format(njoy))
+    log(f"Number of joysticks found: {njoy}")
     for i in range(njoy):
         JOYSTICKS[i] = pygame.joystick.Joystick(i)
         JOYSTICKS[i].init()
-        log("Joystick {} initialized as {} / {}".format(i, pygame.joystick.Joystick(i).get_guid(),\
-             pygame.joystick.Joystick(i).get_instance_id()))
+        log(f"Joystick {i} initialized as {pygame.joystick.Joystick(i).get_guid()} - \
+             {pygame.joystick.Joystick(i).get_instance_id()}")
     PLAYERS_MAX = njoy if njoy <= PLAYERS_MAX else PLAYERS_MAX
     if PLAYERS_MAX == 0:
         PLAYERS_MAX = 1
     clock = pygame.time.Clock()
     dt = 0
-    scenes =  {'TITLE'   : StaticScreen('SETTINGS', 'assets/logo.png', 'LOADING GAMES'),}
+    scenes =  {'TITLE'   : StaticScreen('SETTINGS', 'assets/logo.png',''),}
     scene = scenes['TITLE']
     scene.start(None)
     starttime = pygame.time.get_ticks()
@@ -983,13 +1019,14 @@ def main():
     pygame.display.flip()
     scene.initialize_QB()
     while scene.QB.loaded_pcent < 100:
-        scene.additional("LOADING GAMES {}%".format(scene.QB.loaded_pcent))
+        scene.additional(f"\n\nLOADING GAMES: {scene.QB.loaded_pcent}%")
         scene.draw()
         pygame.display.flip()
         dt = clock.tick(60)
         pygame.time.wait(100) # 100ms
     delta = (pygame.time.get_ticks() - starttime) // 1000
-    scene.start("\n\n{} QUESTIONS\nLOADED IN {} SEC\n \nPlayer 1 Press [A] to start\n \n[Hotkey]+[start] to quit".format(scene.QB.loaded, delta))
+    scene.additional("")
+    scene.start(f"\n\n\n\n{scene.QB.loaded} QUESTIONS\nLOADED IN {delta} SEC\n \nPlayer 1 Press [A] to start\n \n[HOTKEY]+[START] to quit")
     scenes.update({
         'SETTINGS': SettingsScreen(scene.QB),
         'QUIZ'    : QuizScreen(),

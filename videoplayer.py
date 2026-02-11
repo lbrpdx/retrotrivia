@@ -1,6 +1,6 @@
 # Simple Quiz Game Engine in PyGame
 # for Batocera Retrotrivia
-# lbrpdx - 2020/2021
+# lbrpdx - 2020-2026
 # https://github.com/lbrpdx/retrotrivia
 # License: LGPL 3.0
 import pygame
@@ -96,13 +96,11 @@ class VideoSprite(pygame.sprite.Sprite):
                         self.rect.center = (x,y)
                     else:
                         self.image = img_temp
-                    self.proc.stdout.flush()  # doesn't seem to be necessary
                 except Exception as e:
                     # error getting data, end of file?
                     print ("Videoplayer running: error {}".format(e))
         else:
             try:
                 self.image = self.last_image
-                self.proc.stdout.flush()  # doesn't seem to be necessary
             except Exception as e:
                 print ("Videoplayer stopped: error {}".format(e))
