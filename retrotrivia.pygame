@@ -790,6 +790,7 @@ class QuizScreen:
         # Clean and draw question
         if self.vsprite_group is not None:
             if self.vsprite is not None:
+                self.vsprite.stop()
                 self.vsprite_group.remove(self.vsprite)
                 self.vsprite = None
             self.vsprite_group = None

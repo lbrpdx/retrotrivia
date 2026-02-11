@@ -6,6 +6,7 @@
 import pygame
 import subprocess
 import os
+import signal
 
 FFMPEG_BIN       = '/usr/bin/ffmpeg'   # Full path to ffmpeg executable
 TMP_AUDIO_FILE   = '/tmp/retrotrivia_audio.wav'
@@ -32,75 +33,167 @@ class VideoSprite(pygame.sprite.Sprite):
                 '-r', '%d' % FPS,
                 TMP_AUDIO_FILE ]
         self.bytes_per_frame = rect.width * rect.height * 3
-        self.procvideo   = subprocess.Popen(commandvideo, stdout=subprocess.PIPE, bufsize=self.bytes_per_frame*3)
+
+        # Start video ffmpeg as subprocess; we must terminate this later
+        self.procvideo = subprocess.Popen(
+            commandvideo,
+            stdout=subprocess.PIPE,
+            bufsize=self.bytes_per_frame * 3
+        )
+
+        # Audio: blocking call is fine; it exits when extraction is done
         try:
             os.remove(TMP_AUDIO_FILE)
-        except:
+        except FileNotFoundError:
             pass
-        self.procaudio   = subprocess.call(commandaudio, stdout=subprocess.PIPE, bufsize=1024*1024)
-        self.image       = pygame.Surface((rect.width, rect.height), pygame.HWSURFACE)
-        self.rect        = self.image.get_rect()
-        self.rect.x      = rect.x
-        self.rect.y      = rect.y
+        except Exception:
+            pass
+
+        # Note: subprocess.call returns an exit code, not a process
+        self.procaudio_return = subprocess.call(
+            commandaudio,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+
+        self.image  = pygame.Surface((rect.width, rect.height), pygame.HWSURFACE)
+        self.rect   = self.image.get_rect()
+        self.rect.x = rect.x
+        self.rect.y = rect.y
+
         # Used to maintain frame-rate
         self.last_at     = 0              # time frame starts to show
-        self.frame_delay = int(1000/FPS)  # milliseconds duration to show frame
-        # audio
+        self.frame_delay = int(1000 / FPS)
+
+        # audio playback
         if os.path.isfile(TMP_AUDIO_FILE):
             sound_manager.play(TMP_AUDIO_FILE, 800)
-        # and tell when to stop it
-        self.video_stop  = False
-        # optional pixelate effect
-        self.mode        = mode
-        self.coeff       = 2.5        # how slow you want to un-pixelate
-        self.time_start  = pygame.time.get_ticks()
+
+        # video control
+        self.video_stop = False
+        self.eof        = False
+        self.last_image = None
+
+        # effect mode
+        self.mode       = mode
+        self.coeff      = 2  # how slow you want to un-pixellate
+        self.time_start = pygame.time.get_ticks()
+
+    def _kill_proc(self):
+        if self.procvideo is None:
+            return
+        try:
+            # First, ask politely
+            if self.procvideo.poll() is None:
+                self.procvideo.terminate()
+                try:
+                    self.procvideo.wait(timeout=0.5)
+                except subprocess.TimeoutExpired:
+                    # Still alive? Kill it.
+                    self.procvideo.kill()
+                    self.procvideo.wait()
+        except Exception:
+            # Best-effort cleanup; ignore errors
+            pass
+        finally:
+            try:
+                if self.procvideo.stdout:
+                    self.procvideo.stdout.close()
+            except Exception:
+                pass
+            self.procvideo = None
 
     def stop(self):
-        self.video_stop  = True
+        self.video_stop = True
+        self._kill_proc()
+
+    def __del__(self):
+        # Safety net in case stop() was never called
+        self._kill_proc()
 
     def update(self, timer, tmax):
-        if (not self.video_stop):
-            time_now = pygame.time.get_ticks()
-            if (time_now > self.last_at + self.frame_delay):   # has the frame shown for long enough
-                self.last_at = time_now
-                try:
-                    raw_image = self.procvideo.stdout.read(self.bytes_per_frame)
-                    img_temp = pygame.image.frombuffer(raw_image, (self.rect.width, self.rect.height), 'RGB')
-                    self.last_image = img_temp
-                    if self.mode == "pixelated":
-                        # timer in second: don't pixellate if < 3 sec left
-                        if timer > 3:
-                            mmax = max (timer, tmax)
-                            (px, py) = (pow(2,int((mmax - timer +1)/self.coeff)), pow(2,int((mmax - timer +1)/self.coeff)))
-                            if (px, py) < (self.rect.width, self.rect.height):
-                                img_temp = pygame.transform.scale(img_temp, (px,py))
-                        self.image = pygame.transform.scale(img_temp, (self.rect.width, self.rect.height))
-                    elif self.mode == "rotated":
-                        self.image = pygame.transform.rotate(img_temp, (180-(time_now-self.time_start)/20)%360).convert_alpha()
-                        (x, y) = self.rect.center
-                        self.image = pygame.transform.scale(self.image, (self.rect.width, self.rect.height)).convert_alpha()
-                        self.rect = self.image.get_rect()
-                        self.rect.center = (x,y)
-                    elif self.mode == "zoom":
-                        (x, y) = self.rect.center
-                        ttime = (time_now-self.time_start)/1000 # milliseconds elapsed
-                        htime = ttime
-                        if ttime > tmax:
-                            htime = tmax
-                        hx = max (0, x*(1-htime/tmax))
-                        hy = max (0, y*(1-htime/tmax))
-                        rct = pygame.Rect(hx, hy, self.rect.width*htime/tmax, self.rect.height*htime/tmax)
-                        self.image = img_temp.subsurface(rct)
-                        self.image = pygame.transform.scale(self.image, (self.rect.width, self.rect.height)).convert_alpha()
-                        self.rect = self.image.get_rect()
-                        self.rect.center = (x,y)
-                    else:
-                        self.image = img_temp
-                except Exception as e:
-                    # error getting data, end of file?
-                    print ("Videoplayer running: error {}".format(e))
-        else:
-            try:
+        if self.video_stop or self.eof:
+            # Show last frame if available, but don't read from ffmpeg anymore
+            if self.last_image is not None:
                 self.image = self.last_image
-            except Exception as e:
-                print ("Videoplayer stopped: error {}".format(e))
+            return
+
+        if self.procvideo is None:
+            # Process already dead / cleaned up
+            return
+
+        time_now = pygame.time.get_ticks()
+        if time_now <= self.last_at + self.frame_delay:
+            return
+
+        self.last_at = time_now
+
+        try:
+            raw_image = self.procvideo.stdout.read(self.bytes_per_frame)
+            # EOF or short read: stop the video and clean up ffmpeg
+            if not raw_image or len(raw_image) < self.bytes_per_frame:
+                self.eof = True
+                self._kill_proc()
+                return
+
+            img_temp = pygame.image.frombuffer(
+                raw_image,
+                (self.rect.width, self.rect.height),
+                'RGB'
+            )
+            self.last_image = img_temp
+
+            if self.mode == "pixelated":
+                if timer > 3:
+                    mmax = max(timer, tmax)
+                    px = pow(2, int((mmax - timer + 1) / self.coeff))
+                    py = pow(2, int((mmax - timer + 1) / self.coeff))
+                    if (px, py) < (self.rect.width, self.rect.height):
+                        img_temp = pygame.transform.scale(img_temp, (px, py))
+                self.image = pygame.transform.scale(
+                    img_temp,
+                    (self.rect.width, self.rect.height)
+                )
+
+            elif self.mode == "rotated":
+                angle = (180 - (time_now - self.time_start) / 20) % 360
+                rotated = pygame.transform.rotate(img_temp, angle).convert_alpha()
+                (x, y) = self.rect.center
+                rotated = pygame.transform.scale(
+                    rotated,
+                    (self.rect.width, self.rect.height)
+                ).convert_alpha()
+                self.image = rotated
+                self.rect = self.image.get_rect()
+                self.rect.center = (x, y)
+
+            elif self.mode == "zoom":
+                (x, y) = self.rect.center
+                ttime = (time_now - self.time_start) / 1000.0
+                htime = min(ttime, tmax)
+                hx = max(0, x * (1 - htime / tmax))
+                hy = max(0, y * (1 - htime / tmax))
+                rct = pygame.Rect(
+                    hx,
+                    hy,
+                    self.rect.width * htime / tmax,
+                    self.rect.height * htime / tmax
+                )
+                sub = img_temp.subsurface(rct)
+                self.image = pygame.transform.scale(
+                    sub,
+                    (self.rect.width, self.rect.height)
+                ).convert_alpha()
+                self.rect = self.image.get_rect()
+                self.rect.center = (x, y)
+
+            else:
+                # regular
+                self.image = img_temp
+
+        except Exception as e:
+            # Any error while reading from pipe -> assume EOF / broken pipe
+            print(f"Videoplayer running: error {e}")
+            self.eof = True
+            self._kill_proc()
+
