@@ -313,7 +313,7 @@ class GameState:
         if len (self.questionst) < (self.QB.number_q - self.numqansw):
             self.questionst = self.QB.triviabank[:]
         # Remind: GAMEMODES_NAMES = [ 'Video', 'Trivia', 'Pixel', 'Rotate', 'Zoom' ]
-        if self.QB.gamemode[0] == 1 or self.QB.gamemode[2] == 1\
+        if self.QB.gamemode[0] == 1 or self.QB.gamemode[2] == 1 \
                                     or self.QB.gamemode[3] == 1 or self.QB.gamemode[4] == 1:
             if len (self.questionsv) < (self.QB.number_q - self.numqansw):
                 self.questionsv = self.QB.videobank[:]
@@ -395,15 +395,17 @@ class StaticScreen:
         self.background = pygame.Surface((SCREEN.get_width(), SCREEN.get_height()))
         self.square = int(SCREEN.get_height()/20)
         self.img = img if img else None
-        self.additional_text = text if text else None
+        self.additional_text = None
         self.next_scene = next_scene
         self.txt_rendered = []
         self.text_rect = pygame.Rect(SCREEN.get_width()//2.5, SCREEN.get_height()//3,
                                      SCREEN.get_width()//3, SCREEN.get_height()//3 )
-        self.loading_text_obj = RenderedText(text, TEXT_COLOR, TEXT_HALO, self.text_rect)
+        self.loading_text_obj = RenderedText(text, TEXT_COLOR, TEXT_HALO_MENU, self.text_rect)
 
     def start(self, text):
         opx = 5*SCREEN.get_height()//1080
+        self.txt_rendered = [ ]
+        self.additional_text = text if text else None
         self.back_img = pygame.image.load('assets/back_cover.jpg')
         self.back_img = pygame.transform.scale(self.back_img, (SCREEN.get_width(), SCREEN.get_height()))
         self.background.blit(self.back_img, (0, 0))
@@ -424,34 +426,22 @@ class StaticScreen:
             surf.blit(backdrop, (opx, opx))
             self.background.blit(surf, (int(SCREEN.get_width()*0.375), int(SCREEN.get_height()/8)))
             self.background.blit(self.foreground, (int(SCREEN.get_width()*0.375), int(SCREEN.get_height()/8)))
-        if text:
-            if self.additional_text == None:
-                self.additional_text = text
-            else:
-                self.additional_text += text
-        self.draw()
+
+        if self.additional_text:
+            self.loading_text_obj = RenderedText(self.additional_text, TEXT_COLOR, TEXT_HALO_MENU, self.text_rect)
 
     def additional(self, text):
-        self.loading_text_obj = RenderedText(
-            text,
-            TEXT_COLOR,
-            TEXT_HALO,
-            self.text_rect
-        )
+        self.loading_text_obj = RenderedText(text, TEXT_COLOR, TEXT_HALO_MENU, self.text_rect)
 
     def draw(self):
         SCREEN.blit(self.background, (0, 0))
         for i, rendered in enumerate(self.txt_rendered):
             SCREEN.blit(rendered.surface, (rendered.rect.x, rendered.rect.y))
-        SCREEN.blit(self.loading_text_obj.surface,
+        if self.loading_text_obj:
+            SCREEN.blit(self.loading_text_obj.surface,
                     (self.loading_text_obj.rect.x, self.loading_text_obj.rect.y))
 
     def update(self, events, dt):
-        if self.additional_text:
-            p_surface=pygame.Rect(SCREEN.get_width()*0.375, SCREEN.get_height()*0.3,\
-                      SCREEN.get_width()/2, SCREEN.get_height()/2)
-            self.txt_rendered.append(RenderedText(self.additional_text, TEXT_COLOR, TEXT_HALO_MENU, p_surface, 1, 20))
-            self.additional_text = None
         for event in events:
             if key_pressed (event, [JOYSTICKS[0]]) == (0, 'action'):
                 return (self.next_scene, None)
@@ -523,11 +513,12 @@ class SettingsScreen:
     def start(self, *args):
         self.back_img = self.static_bkg_img.copy()
         SCREEN.blit(self.background, (0, 0))
+        self.txt_rendered = [ ]
         self.background.blit(self.back_img, (0, 0))
-        p_surface=pygame.Rect(SCREEN.get_width()*3/8, SCREEN.get_height()/100,\
+        p_surface=pygame.Rect(SCREEN.get_width()*3/8, SCREEN.get_height()/100,
                   SCREEN.get_width()/3, SCREEN.get_height()/10)
         self.txt_rendered.append(RenderedText('SETTINGS', TEXT_COLOR, TEXT_HALO_MENU, p_surface, 4, 30))
-        p_surface2=pygame.Rect(SCREEN.get_width()*3/8, SCREEN.get_height()*8/10,\
+        p_surface2=pygame.Rect(SCREEN.get_width()*3/8, SCREEN.get_height()*8/10,
                   SCREEN.get_width()/3, SCREEN.get_height()/10)
         self.txt_rendered.append(RenderedText('[HOTKEY]+[START] TO QUIT', TEXT_COLOR, TEXT_HALO_MENU, p_surface2, 4, 50))
         n = 0
@@ -549,7 +540,8 @@ class SettingsScreen:
             subsurface = self.static_bkg_img.subsurface(self.rects_val[n])
             self.background.blit(subsurface, (self.rects_val[n].x, self.rects_val[n].y))
             rct = pygame.Rect(self.rects_val[n].x+self.square/10, self.rects_val[n].y+self.square/3, self.square, self.square)
-            self.txt_rendered.append(RenderedText(str(self.settings_val[n]), TEXT_COLOR, TEXT_HALO_MENU, rct))
+            value_text = RenderedText(str(self.settings_val[n]), TEXT_COLOR, TEXT_HALO_MENU, rct)
+            self.background.blit(value_text.surface, (value_text.rect.x, value_text.rect.y))
             self.background.blit(self.up_down[0], (self.rects_up[n].x,self.rects_up[n].y))
             color = BOX_COLOR if (n == self.ysel and self.xsel == 1) else TEXT_HALO_MENU
             pygame.draw.rect(self.background, pygame.Color(color), self.rects_up[n], int(BOX_WIDTH*SCREEN.get_height() / 1080), border_radius=self.square//4)
@@ -570,14 +562,26 @@ class SettingsScreen:
             pygame.draw.rect(self.background, pygame.Color(color), self.rects_gmval[2+i], int(BOX_WIDTH*SCREEN.get_height() / 1080), border_radius=self.square//4)
         # defaults and start buttons
         color = BOX_COLOR if (6 == self.ysel and self.xsel == 0) else TEXT_HALO_MENU
-        pygame.draw.rect(self.background, pygame.Color(color), self.rects_defaults, int(BOX_WIDTH*SCREEN.get_height() / 1080), border_radius=self.square//4)
-        rct = pygame.Rect(self.rects_defaults.x+self.square/3, self.rects_defaults.y+self.square/3, self.square*3, self.square)
-        self.txt_rendered.append(RenderedText('DEFAULTS', TEXT_COLOR, TEXT_HALO_MENU, rct))
+        pygame.draw.rect(self.background, pygame.Color(color), self.rects_defaults,
+                         int(BOX_WIDTH*SCREEN.get_height() / 1080), border_radius=self.square//4)
+        rct = pygame.Rect(self.rects_defaults.x + self.square/3,
+                          self.rects_defaults.y + self.square/3,
+                          self.square*3, self.square)
+        defaults_text = RenderedText('DEFAULTS', TEXT_COLOR, TEXT_HALO_MENU, rct)
+        self.background.blit(defaults_text.surface, (defaults_text.rect.x, defaults_text.rect.y))
+
         color = BOX_COLOR if (6 == self.ysel and self.xsel == 1) else TEXT_HALO_MENU
-        pygame.draw.rect(self.background, pygame.Color(color), self.rects_start, int(BOX_WIDTH*SCREEN.get_height() / 1080), border_radius=self.square//4)
-        rct = pygame.Rect(self.rects_start.x+self.square/2, self.rects_defaults.y+self.square/3, self.square*3, self.square)
-        greylevel = int(math.sin(math.radians(pygame.time.get_ticks()/5%360))*127)
-        self.txt_rendered.append(RenderedText('START', (32+greylevel/4, 128+greylevel, 64+greylevel/2), TEXT_HALO_MENU, rct))
+        pygame.draw.rect(self.background, pygame.Color(color), self.rects_start,
+                         int(BOX_WIDTH*SCREEN.get_height() / 1080), border_radius=self.square//4)
+        rct = pygame.Rect(self.rects_start.x + self.square/2,
+                          self.rects_defaults.y + self.square/3,
+                          self.square*3, self.square)
+        greylevel = int(math.sin(math.radians(pygame.time.get_ticks()/5 % 360)) * 127)
+        start_text = RenderedText('START',
+                                  (32+greylevel/4, 128+greylevel, 64+greylevel/2),
+                                  TEXT_HALO_MENU, rct)
+        self.background.blit(start_text.surface, (start_text.rect.x, start_text.rect.y))
+
 
     def action(self):
         if self.ysel == 0:
@@ -777,7 +781,8 @@ class QuizScreen:
     def start(self, gamestate):
         self.gamestate = gamestate
         self.sound_manager.volume(gamestate.QB.sound_vol)
-        self.r = []
+        self.r = [ ]
+        self.txt_rendered = [ ]
         for n in range(5):
             self.r.append('')
         self.question, self.answer, self.r[1], self.r[2], self.r[3], self.r[4] = gamestate.pop_question()
@@ -788,7 +793,7 @@ class QuizScreen:
                 self.vsprite_group.remove(self.vsprite)
                 self.vsprite = None
             self.vsprite_group = None
-        self.q_surface = pygame.Rect(int(self.square*2.2), int(self.square/4),\
+        self.q_surface = pygame.Rect(int(self.square*2.2), int(self.square/4),
             int((SCREEN.get_height()/2.1+self.square*3/5)*(4/3)), int(SCREEN.get_height()/2.1+self.square*3/5))
 
         if self.is_video:
@@ -807,7 +812,7 @@ class QuizScreen:
         else:
             self.vsprite = None
             self.vsprite_group = None
-        self.contsurf = pygame.Rect(int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.82),\
+        self.contsurf = pygame.Rect(int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.82),
                                 int(SCREEN.get_width()*0.2), int(SCREEN.get_height()*0.18))
         self.timer_started = True
         self.start_time = pygame.time.get_ticks() + gamestate.QB.timer * 1000 + 950 # margin to draw screen
@@ -827,10 +832,10 @@ class QuizScreen:
         for i in range(1, 5):
             box_rect = self.resps[i-1]
             self.txt_rendered.append(RenderedText(self.r[i], TEXT_COLOR, TEXT_HALO, box_rect))
-        rct = pygame.Rect(int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.4), \
+        rct = pygame.Rect(int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.4),
                   int(SCREEN.get_width()*0.2), int(self.square//2))
         self.txt_rendered.append(RenderedText('SCORE BOARD:', TEXT_COLOR, TEXT_HALO, rct))
-        rct = pygame.Rect((int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.05),\
+        rct = pygame.Rect((int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.05),
                   int(SCREEN.get_width()*0.2), int(SCREEN.get_height()*0.10)))
         self.txt_rendered.append(RenderedText(f"QUESTION: {self.gamestate.numq}/{self.gamestate.QB.number_q}", TEXT_COLOR, TEXT_HALO, rct))
 
@@ -868,7 +873,9 @@ class QuizScreen:
             cont_text = "Everyone, " if self.gamestate.QB.players>1 else "Player 1, "
             cont_text += "\n press [A]\n  to continue"
             greylevel = self.pulse_val
-            self.txt_rendered.append(RenderedText(cont_text, (32+greylevel/4, 128+greylevel, 64+greylevel/2), TEXT_HALO, self.contsurf, 1, 20))
+            cont_rtext = RenderedText(cont_text, (32+greylevel/4, 128+greylevel, 64+greylevel/2),
+                                  TEXT_HALO, self.contsurf, 1, 20)
+            SCREEN.blit(cont_rtext.surface, (cont_rtext.rect.x, cont_rtext.rect.y))
         scorey= int(SCREEN.get_height()*0.4)
         for p in range(self.gamestate.QB.players):
             reponse     = pygame.Surface((0, 0))
@@ -889,9 +896,11 @@ class QuizScreen:
                     reponse = self.small_arrows[3]
                     surfreponse = pygame.Rect(int(SCREEN.get_width()*0.9), scorey, self.square//2, self.square//2)
             ready = self.small_ready if self.ready[p] else pygame.Surface((0,0))
-            rct = pygame.Rect(int(SCREEN.get_width()*0.8), int(scorey+(self.square/10)),\
+            rct = pygame.Rect(int(SCREEN.get_width()*0.8), int(scorey+(self.square/10)),
                   int(SCREEN.get_width()*0.2), int(self.square//2))
-            self.txt_rendered.append(RenderedText(f"P{p+1}: {self.gamestate.score[p]}", TEXT_COLOR, TEXT_HALO, rct))
+            score_text = RenderedText(f"P{p+1}: {self.gamestate.score[p]}", TEXT_COLOR, TEXT_HALO, rct)
+            SCREEN.blit(score_text.surface, (score_text.rect.x, score_text.rect.y))
+
             greylevel = int(math.sin(math.radians(pygame.time.get_ticks()/2%360))*63)
             if self.vinput[p] == self.answer:
                 reponse = colorize_icon(reponse, pygame.Color(BOX_COLOR_ANSWER))
@@ -919,19 +928,19 @@ class QuizScreen:
                     (p, ev) = key_pressed (event, JOYSTICKS)
                     if ev == 'up':
                         self.vinput[p] = 1
-                        self.gamestate.QB.timerplayers[p] = int(self.passed_time/1000 \
+                        self.gamestate.QB.timerplayers[p] = int(self.passed_time/1000
                             if self.passed_time/1000 < self.gamestate.QB.timer else self.gamestate.QB.timer)
                     elif ev == 'left':
                         self.vinput[p] = 2
-                        self.gamestate.QB.timerplayers[p] = int(self.passed_time/1000 \
+                        self.gamestate.QB.timerplayers[p] = int(self.passed_time/1000
                             if self.passed_time/1000 < self.gamestate.QB.timer else self.gamestate.QB.timer)
                     elif ev == 'right':
                         self.vinput[p] = 4
-                        self.gamestate.QB.timerplayers[p] = int(self.passed_time/1000 \
+                        self.gamestate.QB.timerplayers[p] = int(self.passed_time/1000
                             if self.passed_time/1000 < self.gamestate.QB.timer else self.gamestate.QB.timer)
                     elif ev == 'down':
                         self.vinput[p] = 3
-                        self.gamestate.QB.timerplayers[p] = int(self.passed_time/1000 \
+                        self.gamestate.QB.timerplayers[p] = int(self.passed_time/1000
                             if self.passed_time/1000 < self.gamestate.QB.timer else self.gamestate.QB.timer)
                 all_answered = 1
                 for p in range(self.gamestate.QB.players):
