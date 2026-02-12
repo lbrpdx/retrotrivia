@@ -1117,7 +1117,7 @@ class QuizScreen:
                                  border_radius=self.square//8)  # 0 = fill
                 self.back_img.blit(reponse, (int(SCREEN.get_width()*0.9), scorey))
 
-            self.back_img.blit(ready, (int(SCREEN.get_width()*0.93), scorey))
+            scene_surface.blit(ready, (int(SCREEN.get_width()*0.93), scorey))
 
         self.countdown_list.update(int(self.passed_time / 1000), self.gamestate.QB.timer)
         self.countdown_list.draw(scene_surface)
