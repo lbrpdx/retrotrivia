@@ -345,18 +345,23 @@ class GameState:
         if self.numqansw < self.numq:
             self.numqansw += 1
             ret = False
+            # Keep per-question info for juice effects
+            self.last_all_correct = True
+            self.last_all_wrong   = True
             for p in range(self.QB.players):
                 if vinput[p] == self.current_question[1]:
                     self.right[p] += 1
                     self.score[p] += timerpl[p]
                     log (f"Question {self.numqansw} was right at {timerpl[p]} sec for player {p+1}")
                     ret = True
+                    self.last_all_wrong = False
                 else:
                     self.wrong[p] += 1
                     self.score[p] -= timerpl[p]
                     if self.score[p] < 0:
                         self.score[p] = 0 # No negative score, too depressing
                     log (f"Question {self.numqansw} was wrong at {timerpl[p]} sec for player {p+1}")
+                    self.last_all_correct = False
             return ret
 
     def get_result(self):
@@ -398,56 +403,138 @@ class StaticScreen:
         self.additional_text = None
         self.next_scene = next_scene
         self.txt_rendered = []
-        self.text_rect = pygame.Rect(SCREEN.get_width()//2.5, SCREEN.get_height()//3,
-                                     SCREEN.get_width()//3, SCREEN.get_height()//3 )
+        self.text_rect = pygame.Rect(
+            SCREEN.get_width()//2.5,
+            SCREEN.get_height()//3,
+            SCREEN.get_width()//3,
+            SCREEN.get_height()//3
+        )
         self.loading_text_obj = RenderedText(text, TEXT_COLOR, TEXT_HALO_MENU, self.text_rect)
+        self.logo_pos = None
+        self.logo_surface = None
+        self.logo_glow_mask = None   # note: consistent name
 
     def start(self, text):
-        opx = 5*SCREEN.get_height()//1080
-        self.txt_rendered = [ ]
+        self.txt_rendered = []
         self.additional_text = text if text else None
+
+        # Only the back_cover in background
         self.back_img = pygame.image.load('assets/back_cover.jpg')
-        self.back_img = pygame.transform.scale(self.back_img, (SCREEN.get_width(), SCREEN.get_height()))
+        self.back_img = pygame.transform.scale(
+            self.back_img,
+            (SCREEN.get_width(), SCREEN.get_height())
+        )
         self.background.blit(self.back_img, (0, 0))
+
+        self.logo_pos = None
+        self.logo_surface = None
+        self.logo_glow_mask = None
+
         if self.img:
-            self.foreground = pygame.image.load(self.img)
-            img_ratio = float(float(self.foreground.get_width())/self.foreground.get_height())
-            self.foreground = pygame.transform.scale(self.foreground, (int(SCREEN.get_width()/8*img_ratio),
-                        int(SCREEN.get_width()/8)))
-            backdrop = colorize_icon(self.foreground.convert_alpha(), pygame.Color(TEXT_HALO_MENU))
-            w = backdrop.get_width() + 2 * opx
-            h = backdrop.get_height() + 2 * opx
-            osurf = pygame.Surface((w, h)).convert_alpha()
-            osurf.fill((0, 0, 0, 0))
-            surf = osurf.copy()
-            osurf.blit(backdrop, (0, 0))
-            for dx, dy in circlepoints(opx, self.circle_cache):
-                surf.blit(osurf, (dx - opx//2, dy - opx//2))
-            surf.blit(backdrop, (opx, opx))
-            self.background.blit(surf, (int(SCREEN.get_width()*0.375), int(SCREEN.get_height()/8)))
-            self.background.blit(self.foreground, (int(SCREEN.get_width()*0.375), int(SCREEN.get_height()/8)))
+            # Load and scale logo
+            self.foreground = pygame.image.load(self.img).convert_alpha()
+            img_ratio = float(self.foreground.get_width()) / self.foreground.get_height()
+            self.foreground = pygame.transform.smoothscale(
+                self.foreground,
+                (int(SCREEN.get_width() / 8 * img_ratio),
+                 int(SCREEN.get_width() / 8))
+            )
+
+            logo_x = int(SCREEN.get_width() * 0.375)
+            logo_y = int(SCREEN.get_height() / 8)
+
+            self.logo_pos = (logo_x, logo_y)
+            self.logo_surface = self.foreground.convert_alpha()
+
+            # Build a glow mask following the logo shape
+            lw, lh = self.logo_surface.get_size()
+            factor = 1.6  # how far out the glow extends
+            glow_w = int(lw * factor)
+            glow_h = int(lh * factor)
+
+            # Upscaled logo
+            glow_mask = pygame.transform.smoothscale(
+                self.logo_surface, (glow_w, glow_h)
+            ).convert_alpha()
+
+            # "Blur" it by downscaling and upscaling a few times to kill detail
+            for _ in range(4):
+                small_w = max(1, glow_w // 2)
+                small_h = max(1, glow_h // 2)
+                glow_mask = pygame.transform.smoothscale(glow_mask, (small_w, small_h))
+                glow_mask = pygame.transform.smoothscale(glow_mask, (glow_w, glow_h))
+
+            # Tint with a bright halo color, but keep alpha
+            halo_color = pygame.Color(TEXT_HALO_MENU)
+            tinted = pygame.Surface((glow_w, glow_h), pygame.SRCALPHA)
+            tinted.fill((0, 0, 0, 0))
+            tinted.blit(glow_mask, (0, 0))
+
+            color_only = pygame.Surface((glow_w, glow_h), pygame.SRCALPHA)
+            color_only.fill((halo_color.r, halo_color.g, halo_color.b, 255))
+            tinted.blit(color_only, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+
+            self.logo_glow_mask = tinted
+
 
         if self.additional_text:
-            self.loading_text_obj = RenderedText(self.additional_text, TEXT_COLOR, TEXT_HALO_MENU, self.text_rect)
+            self.loading_text_obj = RenderedText(
+                self.additional_text, TEXT_COLOR, TEXT_HALO_MENU, self.text_rect
+            )
 
     def additional(self, text):
         self.loading_text_obj = RenderedText(text, TEXT_COLOR, TEXT_HALO_MENU, self.text_rect)
 
     def draw(self):
+        # Base background
         SCREEN.blit(self.background, (0, 0))
-        for i, rendered in enumerate(self.txt_rendered):
+
+        # Logo-based glowing effect
+        if self.logo_pos and self.logo_surface and self.logo_glow_mask:
+            logo_x, logo_y = self.logo_pos
+            lw, lh = self.logo_surface.get_size()
+            gw, gh = self.logo_glow_mask.get_size()
+
+            cx = logo_x + lw // 2
+            cy = logo_y + lh // 2
+
+            now = pygame.time.get_ticks()
+            phase = (now % 2000) / 2000.0
+            p = 0.5 + 0.5 * math.sin(phase * 2 * math.pi)
+
+            scale_factor = 1.0 + 0.15 * p
+            cur_w = int(gw * scale_factor)
+            cur_h = int(gh * scale_factor)
+            glow_scaled = pygame.transform.smoothscale(self.logo_glow_mask, (cur_w, cur_h))
+
+            alpha = int(5 + 45 * p)
+            glow_scaled.set_alpha(alpha)
+
+            gx = cx - cur_w // 2
+            gy = cy - cur_h // 2
+
+            glow_layer = pygame.Surface((SCREEN.get_width(), SCREEN.get_height()), pygame.SRCALPHA)
+            glow_layer.fill((0, 0, 0, 0))
+            glow_layer.blit(glow_scaled, (gx, gy))
+
+            SCREEN.blit(glow_layer, (0, 0))
+            SCREEN.blit(self.logo_surface, self.logo_pos)
+
+        # Text overlays
+        for rendered in self.txt_rendered:
             SCREEN.blit(rendered.surface, (rendered.rect.x, rendered.rect.y))
         if self.loading_text_obj:
             SCREEN.blit(self.loading_text_obj.surface,
-                    (self.loading_text_obj.rect.x, self.loading_text_obj.rect.y))
+                        (self.loading_text_obj.rect.x, self.loading_text_obj.rect.y))
+
 
     def update(self, events, dt):
         for event in events:
-            if key_pressed (event, [JOYSTICKS[0]]) == (0, 'action'):
+            if key_pressed(event, [JOYSTICKS[0]]) == (0, 'action'):
                 return (self.next_scene, None)
 
     def initialize_QB(self):
-        if self.QB == None:
+        if self.QB is None:
             self.QB = QuestionBank()
             self.QB.initialize_Q()
 
@@ -747,36 +834,70 @@ class QuizScreen:
         x = int(10 + SCREEN.get_width()/20)
         y = int(SCREEN.get_height()/2 + self.square)
         self.arrows = [ ]
-        self.arrow_img = pygame.image.load('assets/arrow.png')
-        self.arrow_img = pygame.transform.scale(self.arrow_img, (self.square, self.square))
+        raw_arrow = pygame.image.load('assets/arrow.png').convert_alpha()
+        trimmed_rect = raw_arrow.get_bounding_rect()
+        raw_arrow = raw_arrow.subsurface(trimmed_rect).copy()
+        self.arrow_img = pygame.transform.smoothscale(raw_arrow, (self.square, self.square))
+        self.arrow_img = colorize_icon(self.arrow_img, pygame.Color(TEXT_HALO))
         self.arrows.append(self.arrow_img)
         for i in range (3):
             self.arrow_img = pygame.transform.rotate(self.arrow_img,90)
             self.arrows.append(self.arrow_img)
-        ricox = [ int(x + SCREEN.get_width()*0.8 /2 /2),
-                      int(x),
-                      int(x + SCREEN.get_width()*0.8 /2 /2),
-                      int(x + SCREEN.get_width()*0.8 /2) ]
-        ricoy = [ int(y),
-                      int(y + int(self.square*1.1)),
-                      int(y + 2*int(self.square*1.1)),
-                      int(y + int(self.square*1.1)) ]
         self.small_arrows = []
         for img in self.arrows:
             timg = pygame.transform.scale(img, (self.square//2, self.square//2))
             self.small_arrows.append(timg)
         readyimg = pygame.image.load('assets/ready.png')
         self.small_ready = pygame.transform.scale(readyimg, (int(self.square/1.5), self.square//2))
+
+        answer_area_x = int(SCREEN.get_width() * 0.05)  # left margin
+        answer_area_w = int(SCREEN.get_width() * 0.75)  # width for answers
+        col_w         = answer_area_w // 2
+        # Two columns
+        col_x = [
+            answer_area_x,                   # left column
+            answer_area_x + col_w            # right column
+        ]
+        # Two rows
+        row_y = [
+            int(SCREEN.get_height() * 0.65),  # top row
+            int(SCREEN.get_height() * 0.90)   # bottom row
+        ]
+        gap = int ((row_y[1]-row_y[0])/2)     # gap for left/right between the 2 rows
+
+        positions = [
+            (col_x[0] + col_w//2 , row_y[0]),   # UP
+            (col_x[0], row_y[0] + gap),         # LEFT
+            (col_x[0] + col_w//2 , row_y[1]),   # DOWN
+            (col_x[1], row_y[0] + gap)          # RIGHT
+        ]
+
+        self.rects = []
+        self.resps = []
+
         for n in range(4):
-            rect = pygame.Rect(ricox[n], ricoy[n], self.square, self.square)
-            resp = pygame.Rect(int(ricox[n]+self.square*1.2), int(ricoy[n]+self.square*0.2), int(SCREEN.get_width()*0.8/2-self.square*1.2), self.square)
+            cx, cy = positions[n]
+            rect = pygame.Rect(0, 0, self.square, self.square)
+            rect.center = (cx, cy)
+
+            # Text to the right of each arrow, vertically aligned
+            resp = pygame.Rect(
+                rect.right + int(self.square * 0.2),
+                rect.y,
+                int(answer_area_x + col_w - self.square * 2),
+                self.square
+            )
             self.rects.append(rect)
             self.resps.append(resp)
         self.countdown = Timer()
         self.sound_manager = SoundManager()
         self.reveal = False
         self.pulse_val = 0
-    log ("Initialized QuizScreen")
+        # Juicy animations
+        self.question_start_time = pygame.time.get_ticks()
+        self.shake_time = 0.0
+        self.display_score = [0, 0, 0, 0]
+        self.score_pulse_until = [0, 0, 0, 0]
 
     def start(self, gamestate):
         self.gamestate = gamestate
@@ -787,6 +908,13 @@ class QuizScreen:
             self.r.append('')
         self.question, self.answer, self.r[1], self.r[2], self.r[3], self.r[4] = gamestate.pop_question()
         self.is_video = any(self.question.lower().endswith(ext) for ext in VIDEO_EXTENSIONS)
+        # reset animation state for this question
+        self.question_start_time = pygame.time.get_ticks()
+        self.shake_time = 0.0
+        # Bring displayed scores in sync at question start
+        for p in range(self.gamestate.QB.players):
+            self.display_score[p] = self.gamestate.score[p]
+            self.score_pulse_until[p] = 0
         # Clean and draw question
         if self.vsprite_group is not None:
             if self.vsprite is not None:
@@ -839,84 +967,193 @@ class QuizScreen:
         rct = pygame.Rect((int(SCREEN.get_width()*0.8), int(SCREEN.get_height()*0.05),
                   int(SCREEN.get_width()*0.2), int(SCREEN.get_height()*0.10)))
         self.txt_rendered.append(RenderedText(f"QUESTION: {self.gamestate.numq}/{self.gamestate.QB.number_q}", TEXT_COLOR, TEXT_HALO, rct))
+        self.question_start_time = pygame.time.get_ticks()
 
     def draw(self):
+        # 1) Start from clean background
+        self.back_img = self.static_bkg_img.copy()
         self.background.blit(self.back_img, (0, 0))
-        SCREEN.blit(self.background, (0, 0))
+
+        # 2) QUESTION / ANSWERS ENTRANCE ANIMATION
+        elapsed = pygame.time.get_ticks() - self.question_start_time
+        t = min(max(elapsed / 500.0, 0.0), 1.0)  # 0..1
+        offset = int((1.0 - t) * SCREEN.get_width() * 0.25)
+
+        # 3) Working surface for shake
+        scene_surface = self.background.copy()
+
+        # 3a) Reset right panel (and video area) **before** text
+        right_x = int(SCREEN.get_width() * 0.8)
+        right_rect = (right_x, 0,
+                      int(SCREEN.get_width() * 0.2),
+                      SCREEN.get_height() * 0.7)
+        subsurface = self.static_bkg_img.subsurface(right_rect)
+        scene_surface.blit(subsurface, (right_x, 0))
+
+        if self.is_video:
+            video_rect = (0, 0,
+                          int(SCREEN.get_width() * 0.8),
+                          int(SCREEN.get_height() / 2.1 + self.square))
+            subsurface2 = self.static_bkg_img.subsurface(video_rect)
+            scene_surface.blit(subsurface2, (0, 0))
+
+        # mismatch of the answers between video and trivia
+        answer_start = 1 if not self.is_video else 0
+        answer_end   = answer_start + 4  # exclusive upper bound
+        score_start  = answer_end
+
+        # 4) Draw all static texts (question, answers, SCORE BOARD, QUESTION: x/y)
         for i, rendered in enumerate(self.txt_rendered):
-            SCREEN.blit(rendered.surface, (rendered.rect.x, rendered.rect.y))
+            dx, dy = 0, 0
+            if i == 0 and not self.is_video:
+                # question text: drop from above
+                dy = -offset
+            else:
+                if answer_start <= i < answer_end:
+                    # answers: alternate left / right
+                    dx = -offset if (i % 2 == 0) else offset
+                if i >= score_start:
+                    # SCORE BOARD and QUESTION: slight vertical ease
+                    dy = int(-offset * 0.3)
+            rect = rendered.rect.move(dx, dy)
+            scene_surface.blit(rendered.surface, (rect.x, rect.y))
+
+        # 5) Answer boxes
         n = 1
         for rect in self.rects:
-            # Color boxes
-            col      = BOX_COLOR
-            wid      = BOX_WIDTH
-            self.back_img.blit(self.arrows[n-1], (rect.x, rect.y))
+            adx = -offset if ((n % 2) == 1) else offset
+            rect_anim = rect.move(adx, 0)
+            pygame.draw.rect(scene_surface, pygame.Color(0, 0, 0, 0), rect_anim, 0,
+                       border_radius=self.square // 4)
+
+            arrow_img = self.arrows[n - 1]
+            arrow_rect = arrow_img.get_rect()
+            arrow_rect.center = rect_anim.center
+            scene_surface.blit(arrow_img, arrow_rect.topleft)
+
             if self.reveal:
                 for p in range(self.gamestate.QB.players):
-                    if n == self.vinput[p]:
-                        pygame.draw.rect(self.back_img, pygame.Color(TEXT_COLOR), rect, 0, border_radius=self.square//4) # 0 = fill
+                    if n == self.vinput[p] and n != self.answer:
+                        pygame.draw.rect(scene_surface, pygame.Color(TEXT_COLOR),
+                                         rect_anim, 0, border_radius=self.square // 4)
                         ico = colorize_icon(self.wrong_icon, pygame.Color(BOX_COLOR_WRONG))
-                        self.back_img.blit(ico, (rect.x, rect.y))
+                        scene_surface.blit(ico, (rect_anim.x, rect_anim.y))
                     if n == self.answer:
-                        pygame.draw.rect(self.back_img, pygame.Color(TEXT_COLOR), rect, 0, border_radius=self.square//4) # 0 = fill
+                        scale_factor = 1.0 + 0.03 * math.sin(math.radians(self.pulse_val * 2))
+                        inflated = rect_anim.inflate(
+                            int(rect_anim.w * (scale_factor - 1.0)),
+                            int(rect_anim.h * (scale_factor - 1.0))
+                        )
+                        pygame.draw.rect(scene_surface, pygame.Color(TEXT_COLOR),
+                                         inflated, 0, border_radius=self.square // 4)
                         ico = colorize_icon(self.right_icon, pygame.Color(BOX_COLOR_ANSWER))
-                        self.back_img.blit(ico, (rect.x, rect.y))
+                        scene_surface.blit(ico, (inflated.x, inflated.y))
             n += 1
-        # Timer and scores
-        subsurface = self.static_bkg_img.subsurface((int(SCREEN.get_width()*0.8),0,int(SCREEN.get_width()*0.2),SCREEN.get_height()*0.7))
-        self.back_img.blit(subsurface, (int(SCREEN.get_width()*0.8), 0))
-        # Video player (except if Trivia)
-        if self.is_video:
-            subsurface2 = self.static_bkg_img.subsurface(0,0,int(SCREEN.get_width()*0.8),int(SCREEN.get_height()/2.1+self.square))
-            self.back_img.blit(subsurface2, (0, 0))
-        all_answered = 1
+
+        # 6) Continue score / countdown / vsprite drawing
+
+        scorey = int(SCREEN.get_height() * 0.4)
+        for p in range(self.gamestate.QB.players):
+            reponse     = pygame.Surface((0, 0))
+            surfreponse = pygame.Rect(0, 0, 0, 0)
+            ready       = pygame.Surface((0, 0))
+            scorey += int(self.square * 0.5)
+
+            if self.reveal:
+                if self.vinput[p] == 1:
+                    reponse = self.small_arrows[0]
+                    surfreponse = pygame.Rect(int(SCREEN.get_width()*0.9), scorey,
+                                              self.square//2, self.square//2)
+                elif self.vinput[p] == 2:
+                    reponse = self.small_arrows[1]
+                    surfreponse = pygame.Rect(int(SCREEN.get_width()*0.9), scorey,
+                                              self.square//2, self.square//2)
+                elif self.vinput[p] == 3:
+                    reponse = self.small_arrows[2]
+                    surfreponse = pygame.Rect(int(SCREEN.get_width()*0.9), scorey,
+                                              self.square//2, self.square//2)
+                elif self.vinput[p] == 4:
+                    reponse = self.small_arrows[3]
+                    surfreponse = pygame.Rect(int(SCREEN.get_width()*0.9), scorey,
+                                              self.square//2, self.square//2)
+
+            ready = self.small_ready if self.ready[p] else pygame.Surface((0, 0))
+
+            rct = pygame.Rect(int(SCREEN.get_width() * 0.8),
+                              int(scorey + (self.square / 10)),
+                              int(SCREEN.get_width() * 0.2),
+                              int(self.square // 2))
+
+            target = self.gamestate.score[p]
+            if self.display_score[p] < target:
+                step = max(1, (target - self.display_score[p]) // 5)
+                self.display_score[p] += step
+                self.score_pulse_until[p] = pygame.time.get_ticks() + 250
+            elif self.display_score[p] > target:
+                step = max(1, (self.display_score[p] - target) // 5)
+                self.display_score[p] -= step
+                self.score_pulse_until[p] = pygame.time.get_ticks() + 250
+
+            base_color = pygame.Color(TEXT_COLOR)
+            if pygame.time.get_ticks() < self.score_pulse_until[p]:
+                greylevel2 = int(100 + 50 * math.sin(math.radians(self.pulse_val * 3)))
+                green = max(0, min(255, 128 + greylevel2))
+                base_color = pygame.Color(32, green, 64)
+
+            score_text = RenderedText(f"P{p+1}: {self.display_score[p]}",
+                                      base_color, TEXT_HALO, rct)
+            scene_surface.blit(score_text.surface, (score_text.rect.x, score_text.rect.y))
+
+            greylevel = int(math.sin(math.radians(pygame.time.get_ticks()/2%360))*63)
+            if self.vinput[p] != 0:
+                if self.vinput[p] == self.answer:
+                    reponse = colorize_icon(reponse, pygame.Color(BOX_COLOR_ANSWER))
+                    small_rect_color = (0, 64+greylevel, 0)
+                else:
+                    reponse = colorize_icon(reponse, pygame.Color(BOX_COLOR_WRONG))
+                    small_rect_color = (0, 0, 0)
+
+                pygame.draw.rect(self.back_img, small_rect_color, surfreponse, 0,
+                                 border_radius=self.square//8)  # 0 = fill
+                self.back_img.blit(reponse, (int(SCREEN.get_width()*0.9), scorey))
+
+            self.back_img.blit(ready, (int(SCREEN.get_width()*0.93), scorey))
+
+        self.countdown_list.update(int(self.passed_time / 1000), self.gamestate.QB.timer)
+        self.countdown_list.draw(scene_surface)
+
+        if self.vsprite_group is not None:
+            self.vsprite_group.update(int(self.passed_time / 1000), self.gamestate.QB.timer)
+            self.vsprite_group.draw(scene_surface)
+
         if self.reveal:
             cont_text = "Everyone, " if self.gamestate.QB.players>1 else "Player 1, "
             cont_text += "\n press [A]\n  to continue"
             greylevel = self.pulse_val
             cont_rtext = RenderedText(cont_text, (32+greylevel/4, 128+greylevel, 64+greylevel/2),
                                   TEXT_HALO, self.contsurf, 1, 20)
-            SCREEN.blit(cont_rtext.surface, (cont_rtext.rect.x, cont_rtext.rect.y))
-        scorey= int(SCREEN.get_height()*0.4)
-        for p in range(self.gamestate.QB.players):
-            reponse     = pygame.Surface((0, 0))
-            surfreponse = pygame.Rect(0, 0, 0, 0)
-            ready       = pygame.Surface((0, 0))
-            scorey += int(self.square*0.5)
-            if self.reveal:
-                if self.vinput[p] == 1:
-                    reponse = self.small_arrows[0]
-                    surfreponse = pygame.Rect(int(SCREEN.get_width()*0.9), scorey, self.square//2, self.square//2)
-                elif self.vinput[p] == 2:
-                    reponse = self.small_arrows[1]
-                    surfreponse = pygame.Rect(int(SCREEN.get_width()*0.9), scorey, self.square//2, self.square//2)
-                elif self.vinput[p] == 3:
-                    reponse = self.small_arrows[2]
-                    surfreponse = pygame.Rect(int(SCREEN.get_width()*0.9), scorey, self.square//2, self.square//2)
-                elif self.vinput[p] == 4:
-                    reponse = self.small_arrows[3]
-                    surfreponse = pygame.Rect(int(SCREEN.get_width()*0.9), scorey, self.square//2, self.square//2)
-            ready = self.small_ready if self.ready[p] else pygame.Surface((0,0))
-            rct = pygame.Rect(int(SCREEN.get_width()*0.8), int(scorey+(self.square/10)),
-                  int(SCREEN.get_width()*0.2), int(self.square//2))
-            score_text = RenderedText(f"P{p+1}: {self.gamestate.score[p]}", TEXT_COLOR, TEXT_HALO, rct)
-            SCREEN.blit(score_text.surface, (score_text.rect.x, score_text.rect.y))
+            scene_surface.blit(cont_rtext.surface, (cont_rtext.rect.x, cont_rtext.rect.y))
 
-            greylevel = int(math.sin(math.radians(pygame.time.get_ticks()/2%360))*63)
-            if self.vinput[p] == self.answer:
-                reponse = colorize_icon(reponse, pygame.Color(BOX_COLOR_ANSWER))
-                small_rect_color = (0, 64+greylevel, 0)
+        # Shake for wrong answers
+        if self.shake_time > 0.0:
+            # Base amplitude proportional to screen size
+            base_amp = SCREEN.get_width() // 50   # shake effect
+
+            # Make “all wrong” more violent
+            if self.gamestate.last_all_wrong and not self.gamestate.last_all_correct:
+                amp = base_amp * 1.5
             else:
-                reponse = colorize_icon(reponse, pygame.Color(BOX_COLOR_WRONG))
-                small_rect_color = (0, 0, 0)
-            pygame.draw.rect(self.back_img, small_rect_color, surfreponse, 0, border_radius=self.square//8) # 0 = fill
-            self.back_img.blit(reponse, (int(SCREEN.get_width()*0.9), scorey))
-            self.back_img.blit(ready, (int(SCREEN.get_width()*0.93), scorey))
-        self.countdown_list.update(int(self.passed_time/1000), self.gamestate.QB.timer)
-        self.countdown_list.draw(self.back_img)
-        if self.vsprite_group is not None:
-             self.vsprite_group.update(int(self.passed_time/1000), self.gamestate.QB.timer)
-             self.vsprite_group.draw(self.back_img)
+                amp = base_amp                     # normal wrong answer
+
+            # Simple sinusoidal shake based on current time
+            now = pygame.time.get_ticks()
+            t = (now * 0.03) % (2 * math.pi)
+            sx = int(math.sin(t) * amp)
+            sy = 0  # Horizontal nod
+        else:
+            sx, sy = 0, 0
+
+        SCREEN.blit(scene_surface, (sx, sy))
 
     def update(self, events, dt):
         self.pulse_val = int(math.sin(math.radians(pygame.time.get_ticks()/5%360))*127)
@@ -951,25 +1188,35 @@ class QuizScreen:
                     if self.gamestate.QB.sound_vol > 0:
                        if res:
                            self.sound_manager.play('assets/playerright.wav')
+                           self.shake_time = 0.0 # no shake for good answers
                        else:
                            self.sound_manager.play('assets/playeranswered.wav')
+                           # short shake (e.g. one wrong, one right)
+                           self.shake_time = max(self.shake_time, 0.25)
+                    try:
+                        if self.gamestate.last_all_wrong and not self.gamestate.last_all_correct:
+                            # stronger shake when *everyone* is wrong
+                            self.shake_time = max(self.shake_time, 0.40)
+                    except Exception as e:
+                        log(f"Error computing shake: {e}")
                     self.reveal = True
                     log("Reveal answer")
+                    if self.is_video and self.vsprite is not None:
+                        def _stop_video():
+                            try:
+                                self.vsprite.stop()
+                            except Exception as e:
+                                log(f"Error while stopping video sprite: {e}")
+                        thr = threading.Thread(target=_stop_video)
+                        thr.daemon = True
+                        thr.start()
+
             if (self.passed_time <= 0):
                 self.passed_time = 0
                 self.reveal = True
                 log("Time's up")
                 self.sound_manager.play('assets/timeout.wav')
         else:
-            try:
-                if self.vsprite_group is not None:
-                    if self.vsprite is not None:
-                        if self.vsprite.video_stop is False:
-                            log ("Stop video sprite")
-                            self.vsprite.stop()
-            except:
-                log ("Error while killing video sprite")
-                pass
             for event in events:
                 ev = key_pressed (event, JOYSTICKS)
                 all_ready = 1
@@ -985,7 +1232,9 @@ class QuizScreen:
                             score = self.gamestate.get_result()
                             del self.gamestate # Reset for next game
                             return ('RESULT', score)
-            return None
+
+        # Decrease shake timer based on dt (in ms)
+        self.shake_time = max(0.0, self.shake_time - dt / 1000.0)
 
 #######################################
 ### Main Loop
